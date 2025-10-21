@@ -3,28 +3,42 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>My Combined Calendars</title>
+    <title>My Calendars</title>
     <style>
+        /* Basic reset for a true fullscreen experience */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Hide scrollbars */
+        }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: #f4f7f6;
-            margin: 0;
-            padding: 20px;
+            background-color: #ffffff;
+            /* Use Flexbox to structure the page */
             display: flex;
             flex-direction: column;
-            align-items: center;
         }
-        h1 {
-            color: #333;
-            margin-bottom: 20px;
+        .controls {
+            padding: 8px;
+            background-color: #f0f0f0;
+            text-align: center;
+            flex-shrink: 0; /* Prevents this container from shrinking */
+        }
+        #fullscreen-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 5px;
+            border: 1px solid #ccc;
+            background-color: #fff;
+            cursor: pointer;
         }
         .calendar-container {
-            width: 95%;
-            max-width: 1200px; /* Adjust max width as needed */
-            height: 80vh; /* Make the calendar take up 80% of the viewport height */
-            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-            border-radius: 8px;
-            overflow: hidden; /* Ensures the iframe corners are rounded */
+            /* The calendar will grow to fill all available space */
+            flex-grow: 1;
+            width: 100%;
+            border-top: 1px solid #ccc;
         }
         iframe {
             border: none;
@@ -35,11 +49,77 @@
 </head>
 <body>
 
-    <h1>Team and Project Calendars</h1>
+    <!-- 1. The headline is removed -->
+    <!-- 2. This button will control the fullscreen mode -->
+    <div class="controls">
+        <button id="fullscreen-btn">Toggle Fullscreen</button>
+    </div>
 
     <div class="calendar-container">
-        <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=Europe%2FBerlin&showTitle=0&showNav=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&src=ZzZuZDlmb2R2cGJuYzhjNTFkNTkxYWhkbGdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&src=NjllNWZjZDNiZjkzMzQ4ZGEwNjJiZjg4ZDkxNTA2MmU3OGMzZjlmMzc3NTI5NmI5NjIwYTA2OTJkNWUxYTI1YUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%237986CB&color=%23E67C73" ></iframe>
+        <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=Europe%2FBerlin&showTitle=0&showNav=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&src=ZzZuZDlmb2R2cGJuYzhjNTFkNTkxYWhkbGdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&src=NjllNWZjZDNiZjkzMzQ4ZGEwNjJiZjg4ZDkxNTA2MmU3OGMzZjlmMzc3NTI5NmI5NjIwYTA2OTJkNWUxYTI1YUBncm9oucC5jYWxlbmRhci5nb29nbGUuY29t&color=%237986CB&color=%23E67C73" ></iframe>
     </div>
+
+    <script>
+        // --- Fullscreen Functionality ---
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const docElement = document.documentElement;
+
+        fullscreenBtn.addEventListener('click', () => {
+            // Check if we are not already in fullscreen
+            if (!document.fullscreenElement && !document.webkitFullscreenElement) {
+                if (docElement.requestFullscreen) {
+                    docElement.requestFullscreen();
+                } else if (docElement.webkitRequestFullscreen) { // Safari
+                    docElement.webkitRequestFullscreen();
+                }
+            } else {
+                // If we are in fullscreen, exit
+                if (document.exitFullscreen) {
+                    document.exitFullscreen();
+                } else if (document.webkitExitFullscreen) { // Safari
+                    document.webkitExitFullscreen();
+                }
+            }
+        });
+
+        // --- Screen Wake Lock Functionality (Keeps screen on) ---
+        let wakeLock = null;
+
+        // This is an async function to request the wake lock
+        const requestWakeLock = async () => {
+            // Check if the Wake Lock API is supported by the browser
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock is active.');
+                    
+                    // Listen for when the lock is released (e.g., tab is hidden)
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock was released.');
+                        wakeLock = null; // Set to null so we can request it again later
+                    });
+                } catch (err) {
+                    console.error(`${err.name}, ${err.message}`);
+                }
+            } else {
+                console.log('Wake Lock API is not supported by this browser.');
+            }
+        };
+
+        // We can only request the wake lock after the user has interacted
+        // with the page (e.g., clicked, touched, scrolled).
+        // Let's activate it the first time the user clicks anywhere.
+        document.addEventListener('click', requestWakeLock, { once: true });
+        
+        // Also, re-request the lock if the page becomes visible again
+        // (e.g., user switches back to this tab).
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock === null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+
+    </script>
 
 </body>
 </html>
