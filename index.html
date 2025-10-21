@@ -21,77 +21,41 @@
             background-color: var(--color-bg); color: var(--color-text-light);
             display: flex; flex-direction: column;
         }
-
-        /* --- Styling für das ÖPNV-Widget --- */
         #transit-widget {
-            padding: 16px 24px;
-            background-color: #1f2937;
-            flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3);
-            border-bottom: 1px solid #374151;
+            padding: 16px 24px; background-color: #1f2937; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
         }
         #transit-widget h3 {
-            margin: 0 0 12px 0;
-            font-size: 16px;
-            font-weight: 700;
-            color: #d1d5db;
+            margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db;
         }
         #departures-list {
-            display: flex;
-            gap: 16px;
-            overflow-x: auto; /* Erlaubt horizontales Scrollen auf dem Handy */
-            padding-bottom: 10px; /* Platz für die Scrollleiste, falls sie erscheint */
-            -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
+            display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px;
+            -webkit-overflow-scrolling: touch;
         }
         .departure {
-            background-color: #374151;
-            padding: 8px 12px;
-            border-radius: 8px;
-            text-align: center;
-            min-width: 90px;
+            background-color: #374151; padding: 8px 12px; border-radius: 8px;
+            text-align: center; min-width: 90px;
         }
-        .departure .line {
-            font-weight: 900;
-            font-size: 20px;
-        }
-        .departure .time {
-            font-size: 18px;
-            font-weight: 700;
-            color: #f9fafb;
-        }
-        .departure .delay {
-            font-size: 12px;
-            font-weight: 700;
-            color: #fecaca; /* Helles Rot für Verspätung */
-        }
+        .departure .line { font-weight: 900; font-size: 20px; }
+        .departure .time { font-size: 18px; font-weight: 700; color: #f9fafb; }
+        .departure .delay { font-size: 12px; font-weight: 700; color: #fecaca; }
         .departure .direction {
-            font-size: 11px;
-            color: #9ca3af;
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
-            max-width: 90px;
+            font-size: 11px; color: #9ca3af; white-space: nowrap;
+            overflow: hidden; text-overflow: ellipsis; max-width: 90px;
         }
-        /* --- Ende ÖPNV-Styling --- */
-
         #calendar-dashboard {
-            padding: 24px; display: grid;
-            grid-template-columns: 1fr; gap: 12px; flex-grow: 1;
-            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 24px; display: grid; grid-template-columns: 1fr; gap: 12px;
+            flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card {
             color: var(--color-text-dark); padding: 16px; border-radius: 16px;
-            display: flex; flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex; flex-direction: column; box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .event-card .content { flex-grow: 1; }
-        .event-card h2 {
-            margin: 0; font-size: 20px; font-weight: 700; word-break: break-word; line-height: 1.3;
-        }
+        .event-card h2 { margin: 0; font-size: 20px; font-weight: 700; word-break: break-word; line-height: 1.3; }
         .calendar-source {
-            font-weight: 700; font-size: 12px; margin: 8px 0 0 0;
-            padding: 4px 8px; background-color: rgba(0,0,0,0.1);
-            border-radius: 6px; display: inline-block;
+            font-weight: 700; font-size: 12px; margin: 8px 0 0 0; padding: 4px 8px;
+            background-color: rgba(0,0,0,0.1); border-radius: 6px; display: inline-block;
         }
         .event-details { text-align: right; margin-top: 12px; }
         .event-details .time { font-size: 16px; font-weight: 400; }
@@ -110,14 +74,11 @@
     </style>
 </head>
 <body>
-    
     <div id="transit-widget">
         <h3>Abfahrten S+U Neukölln</h3>
         <div id="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
-    
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
-
     <script>
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
@@ -135,13 +96,11 @@
                 const response = await fetch(CLOUDFLARE_WORKER_URL + 'transit');
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const departures = await response.json();
-                
                 departuresList.innerHTML = '';
                 if (departures.length === 0) {
                     departuresList.innerHTML = '<p>Keine Abfahrten gefunden.</p>';
                     return;
                 }
-
                 departures.slice(0, 10).forEach(dep => {
                     const depElement = document.createElement('div');
                     depElement.className = 'departure';
@@ -155,7 +114,7 @@
                     departuresList.appendChild(depElement);
                 });
             } catch (error) {
-                departuresList.innerHTML = '<p>Fehler beim Laden.</p>';
+                departuresList.innerHTML = '<p>Fehler beim Laden der Abfahrten.</p>';
             }
         }
 
@@ -164,24 +123,19 @@
                 const response = await fetch(CLOUDFLARE_WORKER_URL);
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
-                calendarDashboard.innerHTML = ''; 
-
+                calendarDashboard.innerHTML = '';
                 const eventsByDate = {};
                 events.forEach(event => {
                     const eventDate = new Date(event.start.dateTime || event.start.date);
                     const dateKey = eventDate.toISOString().split('T')[0];
-                    if (!eventsByDate[dateKey]) {
-                        eventsByDate[dateKey] = [];
-                    }
+                    if (!eventsByDate[dateKey]) { eventsByDate[dateKey] = []; }
                     eventsByDate[dateKey].push(event);
                 });
-
                 const today = new Date();
                 for (let i = 0; i < 30; i++) {
                     const currentDay = new Date();
                     currentDay.setDate(today.getDate() + i);
                     const dateKey = currentDay.toISOString().split('T')[0];
-                    
                     if (eventsByDate[dateKey]) {
                         eventsByDate[dateKey].forEach(event => {
                             const card = document.createElement('div');
@@ -193,7 +147,6 @@
                             const startDate = new Date(event.start.dateTime || event.start.date);
                             const dateStringShort = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
                             const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
-                            
                             card.innerHTML = `
                                 <div class="content">
                                     <h2>${event.summary || '(Kein Titel)'}</h2>
@@ -214,7 +167,7 @@
                     }
                 }
             } catch (error) {
-                calendarDashboard.innerHTML = `<h2>Fehler: Daten konnten nicht geladen werden.</h2>`;
+                calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`;
             }
         }
         
@@ -230,4 +183,7 @@
         fetchAndDisplayEvents();
         fetchTransitData();
         setInterval(fetchAndDisplayEvents, 60000);
-        setIn
+        setInterval(fetchTransitData, 60000);
+    </script>
+</body>
+</html>
