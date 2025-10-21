@@ -76,7 +76,7 @@
         }
         async function fetchAndDisplayEvents() {
             try {
-                const response = await fetch('/.netlify/functions/getEvents');
+                const response = await fetch('https://mks-kalender-api.ihr-benutzername.workers.dev');
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
                 dashboard.innerHTML = ''; 
