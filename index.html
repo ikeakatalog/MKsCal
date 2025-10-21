@@ -21,7 +21,7 @@
         }
         .departure-row {
             display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0;
-            border-bottom: 1px solid #374151; cursor: pointer;
+            border-bottom: 1px solid #374151;
         }
         .departure-row:last-child { border-bottom: none; }
         .line-symbol {
@@ -31,23 +31,19 @@
         }
         .line-info { display: flex; align-items: center; gap: 5px; min-width: 45px; }
         .line-info .platform { font-size: 12px; color: #9ca3af; font-weight: 700; }
-        .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow: hidden; }
-        .direction-text {
-            font-size: 16px; font-weight: 700; display: inline-block;
-            transition: transform 0.2s ease; /* Sanftes Zurücksetzen */
-        }
         
-        /* KORRIGIERTE LAUFSCHRIFT: Wird nur aktiv, wenn die Klasse .is-scrolling gesetzt ist */
-        .direction-text.is-scrolling {
-            transition: none; /* Deaktiviert das sanfte Zurücksetzen während der Animation */
-            animation-name: marquee;
-            animation-timing-function: linear;
-            animation-iteration-count: infinite;
+        /* KORREKTUR: Manuelles Scrollen statt Laufschrift */
+        .direction-wrapper {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow-x: auto; /* Erlaubt horizontales Scrollen bei Bedarf */
+            -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
         }
-        @keyframes marquee {
-            from { transform: translateX(0); }
-            to { transform: translateX(var(--marquee-distance)); }
-        }
+        /* Versteckt die Scrollleiste, aber das Scrollen bleibt möglich */
+        .direction-wrapper::-webkit-scrollbar { display: none; }
+        .direction-wrapper { scrollbar-width: none; }
+
+        .direction-text { font-size: 16px; font-weight: 700; display: inline-block; }
 
         .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
         .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
@@ -56,8 +52,28 @@
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        #calendar-dashboard { /* ... (CSS ist unverändert) ... */ }
-        /* ... (Restliches CSS ist unverändert) ... */
+        /* KORREKTUR: Kalender-Layout wiederhergestellt */
+        #calendar-dashboard {
+            padding: 16px 12px; /* Oben/unten und seitlicher Abstand für den Scroll-Container */
+            display: grid; grid-template-columns: 1fr; 
+            gap: 12px; /* Abstand ZWISCHEN den Karten */
+            flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .event-card, .empty-day-card {
+            border-radius: 24px; /* Stark abgerundete Ecken für JEDE Karte */
+            padding: 12px 20px; /* Innenabstand für den Inhalt */
+        }
+        .event-card {
+            display: flex; align-items: center; justify-content: space-between; /* Zweispaltiges Layout */
+            color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .event-card .info { text-align: left; }
+        .event-card .datetime { text-align: right; }
+        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; } /* Kompakte Schrift */
+        .calendar-source { font-size: 11px; margin-top: 6px; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
+        .datetime .time { font-size: 14px; font-weight: 400; }
+        .datetime .date { font-size: 20px; font-weight: 900; }
+        .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; padding: 8px; }
     </style>
 </head>
 <body>
@@ -95,7 +111,6 @@
                     const timeClass = getTimeClass(minutesFromNow);
                     const timeInfo = `${absoluteTime} <span class="rel-time ${timeClass}">(${minutesFromNow} Min)</span>`;
                     const symbol = getTransitSymbol(dep.product);
-                    // KORREKTUR: "Gl. " und "Pos. " werden entfernt
                     const platformText = dep.platform ? `<span class="platform">${dep.platform.replace(/Gl\.\s|Pos\.\s/g, '')}</span>` : '';
 
                     depElement.innerHTML = `
@@ -117,52 +132,78 @@
                 transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
             }
         }
+
+        async function fetchAndDisplayEvents() {
+            try {
+                const response = await fetch(CLOUDFLARE_WORKER_URL);
+                if (!response.ok) throw new Error('Netzwerkfehler');
+                const events = await response.json();
+                calendarDashboard.innerHTML = '';
+                const eventsByDate = {};
+                events.forEach(event => {
+                    const d = new Date(event.start.dateTime || event.start.date);
+                    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+                    if (!eventsByDate[key]) { eventsByDate[key] = []; }
+                    eventsByDate[key].push(event);
+                });
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+                for (let i = 0; i < 30; i++) {
+                    const currentDay = new Date(today);
+                    currentDay.setDate(today.getDate() + i);
+                    const dateKey = currentDay.toISOString();
+                    if (eventsByDate[dateKey]) {
+                        eventsByDate[dateKey].forEach(event => {
+                            const card = document.createElement('div');
+                            card.className = 'event-card';
+                            const bgColor = colorMap[event.calendarName] || colorMap['default'];
+                            card.style.backgroundColor = bgColor;
+                            const textColor = getContrastColor(bgColor);
+                            card.style.color = textColor;
+                            const startDate = new Date(event.start.dateTime || event.start.date);
+                            let dateDisplayString;
+                            if (currentDay.getTime() === today.getTime()) { dateDisplayString = 'Heute'; } 
+                            else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } 
+                            else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); }
+                            const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
+                            
+                            card.innerHTML = `
+                                <div class="info">
+                                    <h2>${event.summary || '(Kein Titel)'}</h2>
+                                    <p class="calendar-source">${event.calendarName}</p>
+                                </div>
+                                <div class="datetime">
+                                    <div class="date">${dateDisplayString}</div>
+                                    <div class="time">${timeString}</div>
+                                </div>
+                            `;
+                            calendarDashboard.appendChild(card);
+                        });
+                    } else {
+                        const emptyCard = document.createElement('div');
+                        emptyCard.className = 'empty-day-card';
+                        emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+                        calendarDashboard.appendChild(emptyCard);
+                    }
+                }
+            } catch (error) {
+                calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`;
+            }
+        }
         
-        // --- NEUE, KORRIGIERTE LAUFSCHRIFT-LOGIK ---
-        let activeMarquee = null;
-        function stopMarquee() {
-            if (activeMarquee) {
-                activeMarquee.classList.remove('is-scrolling');
-                activeMarquee.style.animationDuration = null;
-                activeMarquee.style.setProperty('--marquee-distance', `0px`);
-                activeMarquee = null;
-            }
+        function getContrastColor(hexColor) {
+            if (!hexColor) return '#1f2937';
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.6 ? '#1f2937' : '#f9fafb';
         }
-        function startMarquee(event) {
-            stopMarquee();
-            const row = event.target.closest('.departure-row');
-            if (!row) return;
-
-            const dir = row.querySelector('.direction-text');
-            if (dir.scrollWidth > dir.clientWidth) {
-                const overflow = dir.clientWidth - dir.scrollWidth;
-                const duration = dir.scrollWidth / 40;
-                
-                dir.style.setProperty('--marquee-distance', `${overflow}px`);
-                dir.style.animationDuration = `${duration}s`;
-                dir.classList.add('is-scrolling');
-                activeMarquee = dir;
-            }
-        }
-        transitWidget.addEventListener('mousedown', startMarquee, true);
-        transitWidget.addEventListener('touchstart', startMarquee, true);
-        document.addEventListener('mouseup', stopMarquee, true);
-        document.addEventListener('touchend', stopMarquee, true);
-
-
-        async function fetchAndDisplayEvents() { /* ... (unverändert) ... */ }
-        function getContrastColor(hexColor) { /* ... (unverändert) ... */ }
 
         fetchAndDisplayEvents();
         fetchTransitData();
         setInterval(fetchAndDisplayEvents, 60000);
         setInterval(fetchTransitData, 30000);
-
-        // Fügen Sie die unveränderten Codeblöcke hier ein
-        function getTransitSymbol(product) { switch(product) { case 'suburban': return 'S'; case 'subway': return 'U'; case 'bus': return 'B'; default: return ''; } }
-        function getTimeClass(minutes) { if (minutes < 5) return 'time-soon'; if (minutes <= 10) return 'time-medium'; return 'time-far'; }
-        async function fetchAndDisplayEvents() { try { const response = await fetch(CLOUDFLARE_WORKER_URL); if (!response.ok) throw new Error('Netzwerkfehler'); const events = await response.json(); calendarDashboard.innerHTML = ''; const eventsByDate = {}; events.forEach(event => { const d = new Date(event.start.dateTime || event.start.date); const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); if (!eventsByDate[key]) { eventsByDate[key] = []; } eventsByDate[key].push(event); }); const today = new Date(); today.setHours(0,0,0,0); const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1); for (let i = 0; i < 30; i++) { const currentDay = new Date(today); currentDay.setDate(today.getDate() + i); const dateKey = currentDay.toISOString(); if (eventsByDate[dateKey]) { eventsByDate[dateKey].forEach(event => { const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date); let dateDisplayString; if (currentDay.getTime() === today.getTime()) { dateDisplayString = 'Heute'; } else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); } const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig'; card.innerHTML = `<div class="info"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="datetime"><div class="date">${dateDisplayString}</div><div class="time">${timeString}</div></div>`; calendarDashboard.appendChild(card); }); } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); } } } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; } }
-        function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
     </script>
 </body>
 </html>
