@@ -21,26 +21,13 @@
         .departure .time { font-size: 18px; font-weight: 700; color: #f9fafb; }
         .departure .delay { font-size: 12px; font-weight: 700; color: #fecaca; }
         .departure .direction { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
-        
         #calendar-dashboard {
             padding: 24px; display: grid; grid-template-columns: 1fr; gap: 0; 
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-
-        /* NEUES DESIGN für nahtlose, aber runde Listen */
-        .event-card, .empty-day-card {
-            border-bottom: 1px solid #374151; /* Trennlinie zwischen allen Elementen */
-        }
-        .event-card:first-child, .empty-day-card:first-child {
-            border-top-left-radius: 24px;
-            border-top-right-radius: 24px;
-        }
-        .event-card:last-child, .empty-day-card:last-child {
-            border-bottom-left-radius: 24px;
-            border-bottom-right-radius: 24px;
-            border-bottom: none; /* Keine Linie unter dem letzten Element */
-        }
-        
+        .event-card, .empty-day-card { border-bottom: 1px solid #374151; }
+        .event-card:first-child, .empty-day-card:first-child { border-top-left-radius: 24px; border-top-right-radius: 24px; }
+        .event-card:last-child, .empty-day-card:last-child { border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; border-bottom: none; }
         .event-card {
             color: var(--color-text-dark); padding: 16px;
             display: flex; flex-direction: column;
@@ -51,16 +38,13 @@
         .event-details { text-align: right; margin-top: 12px; }
         .event-details .time { font-size: 16px; font-weight: 400; }
         .event-details .date { font-size: 24px; font-weight: 900; }
-        
         .empty-day-card {
             background-color: #1f2937; color: #9ca3af; padding: 12px 16px;
             text-align: center; font-weight: 700; font-size: 14px;
         }
-
-        /* Desktop-Anpassungen bleiben erhalten */
         @media (min-width: 768px) {
             #calendar-dashboard { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; padding: 24px; }
-            .event-card, .empty-day-card { border-radius: 24px !important; border-bottom: none !important; } /* Wichtig: Alle Karten sind wieder separat und rund */
+            .event-card, .empty-day-card { border-radius: 24px !important; border-bottom: none !important; }
             .empty-day-card { background-color: #1f2937; }
             .event-card h2 { font-size: 24px; }
             .event-details .time { font-size: 18px; }
