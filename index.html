@@ -76,7 +76,7 @@
         }
         async function fetchAndDisplayEvents() {
             try {
-                const response = await fetch('https://mks-kalender-api.ihr-benutzername.workers.dev');
+                const response = await fetch('https://mkscal.ikeakatalog.workers.dev');
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
                 dashboard.innerHTML = ''; 
