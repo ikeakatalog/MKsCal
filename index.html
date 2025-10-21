@@ -11,7 +11,7 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         .transit-widget {
-            padding: 16px 24px; background-color: #1f2937; flex-shrink: 0;
+            padding: 12px 24px; background-color: #1f2937; flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
         }
         .transit-widget h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
@@ -21,32 +21,47 @@
         .departure .time { font-size: 18px; font-weight: 700; color: #f9fafb; }
         .departure .delay { font-size: 12px; font-weight: 700; color: #fecaca; }
         .departure .direction { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+        
         #calendar-dashboard {
             padding: 24px; display: grid; grid-template-columns: 1fr; gap: 0; 
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-        .event-card {
-            color: var(--color-text-dark); padding: 16px; border-radius: 0; 
-            display: flex; flex-direction: column; border-bottom: 1px solid #374151;
+
+        /* NEUES DESIGN für nahtlose, aber runde Listen */
+        .event-card, .empty-day-card {
+            border-bottom: 1px solid #374151; /* Trennlinie zwischen allen Elementen */
         }
-        .event-card:first-child { border-top: 1px solid #374151; }
+        .event-card:first-child, .empty-day-card:first-child {
+            border-top-left-radius: 24px;
+            border-top-right-radius: 24px;
+        }
+        .event-card:last-child, .empty-day-card:last-child {
+            border-bottom-left-radius: 24px;
+            border-bottom-right-radius: 24px;
+            border-bottom: none; /* Keine Linie unter dem letzten Element */
+        }
+        
+        .event-card {
+            color: var(--color-text-dark); padding: 16px;
+            display: flex; flex-direction: column;
+        }
         .event-card .content { flex-grow: 1; }
         .event-card h2 { margin: 0; font-size: 20px; font-weight: 700; word-break: break-word; line-height: 1.3; }
         .calendar-source { font-weight: 700; font-size: 12px; margin: 8px 0 0 0; padding: 4px 8px; background-color: rgba(0,0,0,0.1); border-radius: 6px; display: inline-block; }
         .event-details { text-align: right; margin-top: 12px; }
         .event-details .time { font-size: 16px; font-weight: 400; }
         .event-details .date { font-size: 24px; font-weight: 900; }
+        
         .empty-day-card {
-            background-color: transparent; color: #9ca3af; padding: 12px 16px;
-            border-bottom: 1px solid #374151; text-align: center; font-weight: 700; font-size: 14px;
+            background-color: #1f2937; color: #9ca3af; padding: 12px 16px;
+            text-align: center; font-weight: 700; font-size: 14px;
         }
-        .empty-day-card:first-child { border-top: 1px solid #374151; }
+
+        /* Desktop-Anpassungen bleiben erhalten */
         @media (min-width: 768px) {
             #calendar-dashboard { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; padding: 24px; }
-            .event-card { padding: 24px; border-radius: 24px; border-bottom: none; }
-            .event-card:first-child { border-top: none; }
-            .empty-day-card { border-radius: 12px; border-bottom: none; background-color: #1f2937; }
-            .empty-day-card:first-child { border-top: none; }
+            .event-card, .empty-day-card { border-radius: 24px !important; border-bottom: none !important; } /* Wichtig: Alle Karten sind wieder separat und rund */
+            .empty-day-card { background-color: #1f2937; }
             .event-card h2 { font-size: 24px; }
             .event-details .time { font-size: 18px; }
             .event-details .date { font-size: 32px; }
@@ -60,7 +75,10 @@
         <div id="departures-neukoelln" class="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
     
-    <!-- Das Widget für die Zeitzer Str. wurde entfernt, um Fehler zu vermeiden. -->
+    <div id="transit-widget-zeitzer" class="transit-widget">
+        <h3>Zeitzer Str.</h3>
+        <div id="departures-zeitzer" class="departures-list"><p>Lade Abfahrten...</p></div>
+    </div>
 
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
@@ -117,10 +135,12 @@
 
         fetchAndDisplayEvents();
         fetchTransitData('900078201', 'departures-neukoelln');
+        fetchTransitData('900019404', 'departures-zeitzer');
 
         setInterval(fetchAndDisplayEvents, 60000);
         setInterval(() => {
             fetchTransitData('900078201', 'departures-neukoelln');
+            fetchTransitData('900019404', 'departures-zeitzer');
         }, 30000);
     </script>
 </body>
