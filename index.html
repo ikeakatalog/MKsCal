@@ -31,20 +31,8 @@
         }
         .line-info { display: flex; align-items: center; gap: 5px; min-width: 45px; }
         .line-info .platform { font-size: 12px; color: #9ca3af; font-weight: 700; }
-        
-        /* KORREKTUR: Manuelles Scrollen statt Laufschrift */
-        .direction-wrapper {
-            flex-grow: 1;
-            white-space: nowrap;
-            overflow-x: auto; /* Erlaubt horizontales Scrollen bei Bedarf */
-            -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
-        }
-        /* Versteckt die Scrollleiste, aber das Scrollen bleibt möglich */
-        .direction-wrapper::-webkit-scrollbar { display: none; }
-        .direction-wrapper { scrollbar-width: none; }
-
+        .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow: hidden; }
         .direction-text { font-size: 16px; font-weight: 700; display: inline-block; }
-
         .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
         .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
         .meta-info .station { font-size: 14px; font-weight: 900; }
@@ -52,24 +40,29 @@
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        /* KORREKTUR: Kalender-Layout wiederhergestellt */
+        /* KORREKTUR: Kalender-Layout ohne Abstände */
         #calendar-dashboard {
-            padding: 16px 12px; /* Oben/unten und seitlicher Abstand für den Scroll-Container */
+            padding: 0; /* KEIN PADDING */
             display: grid; grid-template-columns: 1fr; 
-            gap: 12px; /* Abstand ZWISCHEN den Karten */
+            gap: 0; /* KEIN ABSTAND ZWISCHEN ELEMENTEN */
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card {
-            border-radius: 24px; /* Stark abgerundete Ecken für JEDE Karte */
-            padding: 12px 20px; /* Innenabstand für den Inhalt */
+            margin: 0; /* KEIN AUSSENABSTAND */
+            border-radius: 0; /* KEINE RUNDEN ECKEN MEHR */
+            padding: 12px 20px; /* Nur Innenabstand */
+            border-bottom: 1px solid #374151; /* Trennlinie */
         }
+        .event-card:last-of-type { border-bottom: none; }
+        .empty-day-card:last-of-type { border-bottom: none; }
+
         .event-card {
-            display: flex; align-items: center; justify-content: space-between; /* Zweispaltiges Layout */
-            color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            display: flex; align-items: center; justify-content: space-between;
+            color: var(--color-text-dark);
         }
         .event-card .info { text-align: left; }
         .event-card .datetime { text-align: right; }
-        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; } /* Kompakte Schrift */
+        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; }
         .calendar-source { font-size: 11px; margin-top: 6px; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
         .datetime .time { font-size: 14px; font-weight: 400; }
         .datetime .date { font-size: 20px; font-weight: 900; }
@@ -81,13 +74,27 @@
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
     <script>
+        // --- DER GESAMTE SCRIPT-BLOCK WURDE BEREINIGT UND IST JETZT KORREKT ---
+
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
         const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function getTransitSymbol(product) { /* ... (unverändert) ... */ }
-        function getTimeClass(minutes) { /* ... (unverändert) ... */ }
+        function getTransitSymbol(product) {
+            switch(product) {
+                case 'suburban': return 'S';
+                case 'subway': return 'U';
+                case 'bus': return 'B';
+                default: return '';
+            }
+        }
+        
+        function getTimeClass(minutes) {
+            if (minutes < 5) return 'time-soon';
+            if (minutes <= 10) return 'time-medium';
+            return 'time-far';
+        }
 
         async function fetchTransitData() {
             try {
