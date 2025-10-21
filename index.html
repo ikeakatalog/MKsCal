@@ -32,59 +32,65 @@
     </style>
 </head>
 <body>
-    
     <div id="transit-widget">
-        <!-- Der Titel wird jetzt dynamisch gefüllt -->
         <h3 id="station-name">ÖPNV-Abfahrten</h3>
         <div id="departures-list"><p id="departures-status">Standort wird ermittelt...</p></div>
     </div>
-    
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
-
     <script>
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
         const departuresList = document.getElementById('departures-list');
-        const stationNameElement = document.getElementById('station-name'); // Das H3-Element
-        const departuresStatus = document.getElementById('departures-status'); // Das P-Element
+        const stationNameElement = document.getElementById('station-name');
+        const departuresStatus = document.getElementById('departures-status');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        // --- NEUE LOGIK FÜR STANDORTBASIERTEN ÖPNV ---
-
-        // 1. Diese Funktion startet den Prozess
         function initializeTransitWidget() {
-            if ("geolocation" in navigator) {
-                navigator.geolocation.getCurrentPosition(locationSuccess, locationError);
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(locationSuccess, locationError, {
+                    enableHighAccuracy: true,
+                    timeout: 10000, // 10 Sekunden Timeout
+                    maximumAge: 0
+                });
             } else {
                 departuresStatus.textContent = "Standort-API nicht verfügbar.";
             }
         }
 
-        // 2. Wird aufgerufen, wenn der Standort erfolgreich ermittelt wurde
         function locationSuccess(position) {
             const { latitude, longitude } = position.coords;
             departuresStatus.textContent = "Lade Abfahrten...";
             fetchTransitData(latitude, longitude);
         }
-
-        // 3. Wird aufgerufen, wenn es einen Fehler bei der Standort-Ermittlung gab
-        function locationError() {
-            departuresStatus.textContent = "Standort-Zugriff verweigert oder Fehler.";
+        
+        // VERBESSERTE FEHLERMELDUNG
+        function locationError(error) {
+            switch(error.code) {
+                case error.PERMISSION_DENIED:
+                    departuresStatus.textContent = "Standort-Zugriff wurde verweigert.";
+                    break;
+                case error.POSITION_UNAVAILABLE:
+                    departuresStatus.textContent = "Standort nicht verfügbar. (Desktop?)";
+                    break;
+                case error.TIMEOUT:
+                    departuresStatus.textContent = "Standort-Abfrage dauerte zu lange.";
+                    break;
+                default:
+                    departuresStatus.textContent = "Unbekannter Standort-Fehler.";
+                    break;
+            }
         }
         
-        // 4. Holt die Daten vom Worker, jetzt mit Koordinaten
         async function fetchTransitData(latitude, longitude) {
             try {
                 const response = await fetch(`${CLOUDFLARE_WORKER_URL}transit?lat=${latitude}&lon=${longitude}`);
                 if (!response.ok) throw new Error('Netzwerkfehler');
-                
                 const data = await response.json();
                 
-                // Aktualisiere den Titel mit dem Namen der gefundenen Haltestelle
                 stationNameElement.textContent = `Abfahrten: ${data.stationName}`;
                 departuresList.innerHTML = '';
                 
-                if (data.departures.length === 0) {
+                if (!data.departures || data.departures.length === 0) {
                     departuresList.innerHTML = '<p>Keine Abfahrten gefunden.</p>';
                     return;
                 }
@@ -93,20 +99,14 @@
                     const depElement = document.createElement('div');
                     depElement.className = 'departure';
                     const delayText = dep.delay > 0 ? `<div class="delay">+${dep.delay} min</div>` : '';
-                    depElement.innerHTML = `
-                        <div class="line">${dep.line}</div>
-                        <div class="time">${dep.when}</div>
-                        ${delayText}
-                        <div class="direction">${dep.direction}</div>
-                    `;
+                    depElement.innerHTML = `<div class="line">${dep.line}</div><div class="time">${dep.when}</div>${delayText}<div class="direction">${dep.direction}</div>`;
                     departuresList.appendChild(depElement);
                 });
             } catch (error) {
                 departuresList.innerHTML = '<p>Fehler beim Laden der Abfahrten.</p>';
             }
         }
-
-        // --- KALENDER-FUNKTIONEN (unverändert) ---
+        
         async function fetchAndDisplayEvents() {
             try {
                 const response = await fetch(CLOUDFLARE_WORKER_URL);
@@ -158,12 +158,11 @@
             const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
             return luminance > 0.6 ? '#1f2937' : '#f9fafb';
         }
-
-        // --- START- UND REFRESH-LOGIK (aktualisiert) ---
+        
         fetchAndDisplayEvents();
-        initializeTransitWidget(); // Starte den Standort-Prozess
+        initializeTransitWidget();
         setInterval(fetchAndDisplayEvents, 60000);
-        setInterval(initializeTransitWidget, 60000); // Frage jede Minute erneut nach Standort und Daten
+        setInterval(initializeTransitWidget, 30000); // ÖPNV alle 30 Sekunden aktualisieren für mehr Genauigkeit
     </script>
 </body>
 </html>
