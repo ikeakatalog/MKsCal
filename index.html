@@ -2,70 +2,45 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <!-- Meta-Tags optimiert für mobile Darstellung -->
     <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Kalender Dashboard</title>
     <style>
-        /* Import einer modernen, klaren Schriftart */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
-        /* Definition der Farbpalette */
         :root {
             --color-bg: #111827;
             --color-text-dark: #1f2937;
             --color-text-light: #f9fafb;
         }
 
-        /* Grund-Layout, optimiert um "Hüpfen" in mobilen Browsern zu verhindern */
         html, body {
             margin: 0;
             padding: 0;
             width: 100%;
             height: 100%;
-            overflow: hidden; /* Verhindert das Scrollen des gesamten Fensters */
-            position: fixed;  /* Fixiert die Ansicht, um das Verhalten der Safari-Leisten zu minimieren */
+            overflow: hidden;
+            position: fixed;
         }
 
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background-color: var(--color-bg);
             color: var(--color-text-light);
-            display: flex;
+            display: flex; /* Wichtig, damit der Kalender-Container den ganzen Platz einnimmt */
             flex-direction: column;
         }
 
-        /* Leiste für den Button */
-        .controls {
-            padding: 12px 24px;
-            background-color: #374151;
-            text-align: right;
-            flex-shrink: 0;
-            transition: all 0.3s ease; /* Für sanftes Ein-/Ausblenden */
-        }
-
-        #fullscreen-btn {
-            font-size: 14px;
-            padding: 8px 16px;
-            border-radius: 8px;
-            border: none;
-            background-color: #4b5563;
-            color: var(--color-text-light);
-            cursor: pointer;
-        }
-
-        /* Das Grid für die Termine, jetzt mit eigenem Scroll-Verhalten */
         #calendar-dashboard {
             padding: 24px;
             display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 24px;
-            flex-grow: 1;
-            overflow-y: auto; /* WICHTIG: Nur dieser Bereich ist jetzt scrollbar */
-            -webkit-overflow-scrolling: touch; /* Sorgt für flüssiges, "natives" Scrollen auf iOS */
+            flex-grow: 1; /* Nimmt den gesamten verfügbaren Platz ein */
+            overflow-y: auto;
+            -webkit-overflow-scrolling: touch;
         }
 
-        /* Die Karten für die Termine, jetzt mit flexibler Höhe */
         .event-card {
             color: var(--color-text-dark);
             padding: 24px;
@@ -73,11 +48,10 @@
             display: flex;
             flex-direction: column;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            /* min-height wurde entfernt, damit sich die Karte an den Inhalt anpasst */
         }
 
         .event-card .content {
-            flex-grow: 1; /* Dieser Bereich wächst und drückt die Details nach unten */
+            flex-grow: 1;
         }
 
         .event-card h2 {
@@ -92,7 +66,7 @@
             font-size: 14px;
             margin: 8px 0 0 0;
             padding: 4px 8px;
-            background-color: rgba(0,0,0,0.1); /* Leicht transparenter Hintergrund */
+            background-color: rgba(0,0,0,0.1);
             border-radius: 6px;
             display: inline-block;
         }
@@ -112,33 +86,18 @@
             font-weight: 900;
         }
 
-        /* Anpassungen für kleine Bildschirme (iPhones) */
         @media (max-width: 600px) {
-            body {
-                padding: 0; /* Kein Padding am Body auf Mobilgeräten */
-            }
-            #calendar-dashboard {
-                padding: 12px;
-                grid-template-columns: 1fr; /* Immer nur eine Spalte */
-                gap: 16px;
-            }
-            .event-card {
-                padding: 16px;
-            }
-            .event-card h2 {
-                font-size: 22px;
-            }
-            .event-details .time {
-                font-size: 28px;
-            }
+            body { padding: 0; }
+            #calendar-dashboard { padding: 12px; grid-template-columns: 1fr; gap: 16px; }
+            .event-card { padding: 16px; }
+            .event-card h2 { font-size: 22px; }
+            .event-details .time { font-size: 28px; }
         }
     </style>
 </head>
 <body>
-
-    <div class="controls">
-        <button id="fullscreen-btn">Ansicht optimieren</button>
-    </div>
+    
+    <!-- Die Leiste mit dem Button wurde komplett entfernt -->
     
     <div id="calendar-dashboard">
         <h2>Lade Kalenderdaten...</h2>
@@ -147,22 +106,29 @@
     <script>
         const dashboard = document.getElementById('calendar-dashboard');
         
-        // Helfer-Funktion, um die beste Textfarbe (schwarz/weiß) für eine gegebene Hintergrundfarbe zu finden
+        // NEU: Definieren Sie hier Ihre Farben manuell.
+        const colorMap = {
+            'M&M': '#f4da63',
+            'Maria': '#d3d3d3',
+            'MK Solo': '#6dada9',
+            'Bodo Banali': '#6dada9',
+            'default': '#e5e7eb' // Eine Standardfarbe, falls ein Kalendername nicht gefunden wird
+        };
+
+        // Helfer-Funktion, um die beste Textfarbe (schwarz/weiß) für eine Hintergrundfarbe zu finden
         function getContrastColor(hexColor) {
-            if (!hexColor) return '#1f2937'; // Standardmäßig dunkler Text
+            if (!hexColor) return '#1f2937';
             const r = parseInt(hexColor.substr(1, 2), 16);
             const g = parseInt(hexColor.substr(3, 2), 16);
             const b = parseInt(hexColor.substr(5, 2), 16);
             const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.5 ? '#1f2937' : '#f9fafb'; // Dunkler Text auf hellem Grund, heller Text auf dunklem Grund
+            return luminance > 0.6 ? '#1f2937' : '#f9fafb'; // Schwellenwert angepasst für bessere Lesbarkeit
         }
 
         async function fetchAndDisplayEvents() {
             try {
                 const response = await fetch('/.netlify/functions/getEvents');
-                if (!response.ok) {
-                    throw new Error('Netzwerkfehler'); // Einfache Fehlermeldung, da wir unten eine eigene ausgeben
-                }
+                if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
                 dashboard.innerHTML = ''; 
                 if (events.length === 0) {
@@ -174,19 +140,18 @@
                     const card = document.createElement('div');
                     card.className = 'event-card';
 
-                    // Setze die Hintergrund- und Textfarbe dynamisch basierend auf den Google Kalender-Daten
-                    card.style.backgroundColor = event.calendarColor;
-                    const textColor = getContrastColor(event.calendarColor);
+                    // Setze die Hintergrund- und Textfarbe basierend auf unserer manuellen Farb-Tabelle
+                    const bgColor = colorMap[event.calendarName] || colorMap['default'];
+                    card.style.backgroundColor = bgColor;
+                    const textColor = getContrastColor(bgColor);
                     card.style.color = textColor;
 
-                    // Formatiere Datum und Uhrzeit
                     const startDate = new Date(event.start.dateTime || event.start.date);
-                    const dateString = startDate.toLocaleDateDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' });
+                    const dateString = startDate.toLocaleDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' });
                     const timeString = event.start.dateTime 
                         ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'
                         : 'Ganztägig';
                     
-                    // Fülle die Karte mit den Termininformationen
                     card.innerHTML = `
                         <div class="content">
                             <h2>${event.summary || '(Kein Titel)'}</h2>
@@ -200,21 +165,4 @@
                     dashboard.appendChild(card);
                 });
             } catch (error) {
-                dashboard.innerHTML = `<h2>Fehler: Die Daten konnten nicht geladen werden.</h2><p>Bitte prüfen Sie die API-Einstellungen in der Google Cloud Console.</p>`;
-                console.error('Detaillierter Fehler:', error);
-            }
-        }
-
-        // "Ansicht optimieren"-Button: Blendet die obere Leiste aus/ein für mehr Platz
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const controlsBar = document.querySelector('.controls');
-        fullscreenBtn.addEventListener('click', () => {
-            controlsBar.style.display = (controlsBar.style.display === 'none') ? 'block' : 'none';
-        });
-
-        // Funktion beim Start ausführen und dann alle 60 Sekunden wiederholen
-        fetchAndDisplayEvents();
-        setInterval(fetchAndDisplayEvents, 60000);
-    </s'cript>
-</body>
-</html>
+                dashboard.innerHTML = `<h2>Fehler: Daten konnten nicht geladen werden.<
