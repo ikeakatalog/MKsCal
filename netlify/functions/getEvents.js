@@ -1,58 +1,61 @@
 // This code runs securely on Netlify's servers.
-// DIESE VERSION IST VEREINFACHT UND HOLT KEINE FARBEN MEHR, UM STABIL ZU LAUFEN.
+// DIES IST EINE SEHR STABILE, EINFACHE VERSION, UM DIE FUNKTIONALITÄT WIEDERHERZUSTELLEN.
 const { google } = require('googleapis');
-
-// Wir definieren hier die Namen, damit wir sie an die Webseite senden können.
-// Die Webseite wird diese Namen dann verwenden, um die richtigen Farben zuzuordnen.
-const calendarNames = {
-    'q1loacs0ih9e9aife87lfvpnj8@group.calendar.google.com': 'M&M',
-    'guertler.maria@googlemail.com': 'Maria',
-    'g6nd9fodvpbnc8c51d591ahdlg@group.calendar.google.com': 'MK Solo',
-    'bodobanali@googlemail.com': 'Bodo Banali'
-};
-
-const calendarIds = Object.keys(calendarNames);
 
 exports.handler = async function (event, context) {
     const apiKey = process.env.GOOGLE_API_KEY;
     const calendar = google.calendar({ version: 'v3', auth: apiKey });
 
+    // Definieren Sie hier die Kalender-IDs und die zugehörigen Namen.
+    const calendarsToFetch = {
+        'q1loacs0ih9e9aife87lfvpnj8@group.calendar.google.com': 'M&M',
+        'guertler.maria@googlemail.com': 'Maria',
+        'g6nd9fodvpbnc8c51d51ahdlg@group.calendar.google.com': 'MK Solo',
+        'bodobanali@googlemail.com': 'Bodo Banali'
+    };
+
     try {
         const now = new Date();
         const futureLimit = new Date();
-        futureLimit.setDate(now.getDate() + 30); // Termine der nächsten 30 Tage
+        futureLimit.setDate(now.getDate() + 30);
 
-        const eventPromises = calendarIds.map(calId =>
+        // Erstelle eine Liste von Promises (Anfragen), eine für jeden Kalender.
+        const promises = Object.keys(calendarsToFetch).map(calendarId => 
             calendar.events.list({
-                calendarId: calId,
+                calendarId: calendarId,
                 timeMin: now.toISOString(),
                 timeMax: futureLimit.toISOString(),
                 maxResults: 25,
                 singleEvents: true,
                 orderBy: 'startTime',
+            }).then(response => {
+                // Füge jedem Termin den Namen des Kalenders direkt hinzu.
+                const calendarName = calendarsToFetch[calendarId];
+                return response.data.items.map(event => ({
+                    ...event,
+                    calendarName: calendarName
+                }));
             })
         );
 
-        const eventResults = await Promise.all(eventPromises);
+        // Warte, bis alle Anfragen abgeschlossen sind.
+        const results = await Promise.all(promises);
         
-        const allEvents = eventResults.flatMap((result, index) => {
-            const calendarId = calendarIds[index];
-            const name = calendarNames[calendarId] || 'Unbekannt';
-            const events = result.data.items || [];
-            
-            // Füge jedem Termin nur den Namen hinzu. Die Farbe wird auf der Webseite entschieden.
-            return events.map(event => ({ ...event, calendarName: name }));
-        }).sort((a, b) => new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date));
+        // Füge alle Ergebnisse zusammen und sortiere sie.
+        const allEvents = results
+            .flat() // Macht aus [[Event1, Event2], [Event3]] -> [Event1, Event2, Event3]
+            .sort((a, b) => new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date));
 
         return {
             statusCode: 200,
             body: JSON.stringify(allEvents),
         };
     } catch (error) {
-        console.error('Error fetching calendar events:', error.message);
+        // Wenn hier ein Fehler auftritt, liegt es fast immer daran, dass einer der Kalender nicht öffentlich ist.
+        console.error('Fehler beim Abrufen der Kalenderdaten:', error.message);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to fetch calendar events.' }),
+            body: JSON.stringify({ error: 'Ein Kalender konnte nicht abgerufen werden. Bitte prüfen Sie die Freigabe-Einstellungen.' }),
         };
     }
 };
