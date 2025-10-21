@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Dashboard</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        :root {
+            --color-1: #e9d5ff;
+            --color-2: #e5e7eb;
+            --color-3: #fecaca;
+            --color-4: #a7f3d0;
+            --text-dark: #111827;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #1f2937;
+            margin: 0;
+            padding: 24px;
+        }
+
+        #calendar-dashboard {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .event-card {
+            background-color: var(--color-1);
+            color: var(--text-dark);
+            padding: 24px;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 150px;
+        }
+        
+        /* Verschiedene Farben für die Karten, wie im Beispiel */
+        .event-card.color-1 { background-color: var(--color-1); }
+        .event-card.color-2 { background-color: var(--color-2); }
+        .event-card.color-3 { background-color: var(--color-3); }
+        .event-card.color-4 { background-color: var(--color-4); }
+
+        .event-card h2 {
+            margin: 0 0 8px 0;
+            font-size: 24px;
+            font-weight: 900;
+        }
+
+        .event-card .time {
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 16px;
+        }
+
+        .event-card .details {
+            font-size: 48px;
+            font-weight: 900;
+            text-align: right;
+            word-break: break-all;
+        }
+    </style>
+</head>
+<body>
+
+    <div id="calendar-dashboard">
+        <!-- Die Kalender-Karten werden hier von JavaScript eingefügt -->
+    </div>
+
+    <script>
+        // Diese Funktion wird die Termine abrufen
+        async function fetchAndDisplayEvents() {
+            const dashboard = document.getElementById('calendar-dashboard');
+            dashboard.innerHTML = '<h2>Lade Kalenderdaten...</h2>';
+
+            try {
+                // HINWEIS: Dies ist eine PLATZHALTER-URL.
+                // Wir müssten eine sichere "Serverless Function" erstellen, die unter dieser Adresse erreichbar ist.
+                const response = await fetch('https://deine-sichere-backend-url/api/getEvents');
+                
+                if (!response.ok) {
+                    throw new Error('Netzwerkfehler beim Laden der Daten.');
+                }
+                
+                const events = await response.json();
+                dashboard.innerHTML = ''; // Leere die "Lade..."-Nachricht
+
+                if (events.length === 0) {
+                    dashboard.innerHTML = '<h2>Keine anstehenden Termine gefunden.</h2>';
+                    return;
+                }
+
+                // Weise den Karten abwechselnd Farben zu
+                const colors = ['color-1', 'color-2', 'color-3', 'color-4'];
+                
+                events.forEach((event, index) => {
+                    const card = document.createElement('div');
+                    card.className = `event-card ${colors[index % colors.length]}`;
+
+                    // Zeit formatieren
+                    const startDate = new Date(event.start.dateTime || event.start.date);
+                    const dateOptions = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+                    const timeOptions = { hour: '2-digit', minute: '2-digit' };
+                    
+                    const dateString = startDate.toLocaleDateString('de-DE', dateOptions);
+                    const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', timeOptions) + ' Uhr' : 'Ganztägig';
+
+                    card.innerHTML = `
+                        <div>
+                            <p class="time">${dateString}</p>
+                            <h2 class="title">${event.summary}</h2>
+                        </div>
+                        <div class="details">${timeString}</div>
+                    `;
+                    dashboard.appendChild(card);
+                });
+
+            } catch (error) {
+                dashboard.innerHTML = `<h2>Fehler: ${error.message}</h2><p>Die Kalenderdaten konnten nicht geladen werden.</p>`;
+                console.error('Fehler beim Abrufen der Termine:', error);
+            }
+        }
+
+        // Starte die Funktion, wenn die Seite geladen ist
+        fetchAndDisplayEvents();
+    </script>
+</body>
+</html>
