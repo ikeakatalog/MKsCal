@@ -21,7 +21,7 @@
         }
         .departure-row {
             display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0;
-            border-bottom: 1px solid #374151;
+            border-bottom: 1px solid #374151; cursor: pointer;
         }
         .departure-row:last-child { border-bottom: none; }
         .line-symbol {
@@ -32,22 +32,24 @@
         .line-info { display: flex; align-items: center; gap: 5px; min-width: 45px; }
         .line-info .platform { font-size: 12px; color: #9ca3af; font-weight: 700; }
         .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow: hidden; }
-        .direction-text { font-size: 16px; font-weight: 700; display: inline-block; padding-left: 100%; } /* Startet außerhalb */
+        .direction-text {
+            font-size: 16px; font-weight: 700; display: inline-block;
+            transition: transform 0.2s ease; /* Sanftes Zurücksetzen */
+        }
         
-        .direction-text.is-overflowing {
+        /* KORRIGIERTE LAUFSCHRIFT: Wird nur aktiv, wenn die Klasse .is-scrolling gesetzt ist */
+        .direction-text.is-scrolling {
+            transition: none; /* Deaktiviert das sanfte Zurücksetzen während der Animation */
             animation-name: marquee;
             animation-timing-function: linear;
             animation-iteration-count: infinite;
         }
         @keyframes marquee {
             from { transform: translateX(0); }
-            to { transform: translateX(-100%); }
+            to { transform: translateX(var(--marquee-distance)); }
         }
 
-        .meta-info {
-            display: flex; align-items: center; gap: 10px;
-            margin-left: auto; padding-left: 10px;
-        }
+        .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
         .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
         .meta-info .station { font-size: 14px; font-weight: 900; }
         .station-nk { color: #81a1c1; } .station-sa { color: #a3be8c; }
@@ -93,7 +95,8 @@
                     const timeClass = getTimeClass(minutesFromNow);
                     const timeInfo = `${absoluteTime} <span class="rel-time ${timeClass}">(${minutesFromNow} Min)</span>`;
                     const symbol = getTransitSymbol(dep.product);
-                    const platformText = dep.platform ? `<span class="platform">Gl. ${dep.platform}</span>` : '';
+                    // KORREKTUR: "Gl. " und "Pos. " werden entfernt
+                    const platformText = dep.platform ? `<span class="platform">${dep.platform.replace(/Gl\.\s|Pos\.\s/g, '')}</span>` : '';
 
                     depElement.innerHTML = `
                         <div class="line-symbol">${symbol}</div>
@@ -110,19 +113,42 @@
                     transitWidget.appendChild(depElement);
                 });
 
-                const directions = transitWidget.querySelectorAll('.direction-text');
-                directions.forEach(dir => {
-                    if (dir.scrollWidth > dir.parentElement.clientWidth) {
-                        const duration = dir.scrollWidth / 40;
-                        dir.classList.add('is-overflowing');
-                        dir.style.animationDuration = `${duration}s`;
-                    }
-                });
-
             } catch (error) {
                 transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
             }
         }
+        
+        // --- NEUE, KORRIGIERTE LAUFSCHRIFT-LOGIK ---
+        let activeMarquee = null;
+        function stopMarquee() {
+            if (activeMarquee) {
+                activeMarquee.classList.remove('is-scrolling');
+                activeMarquee.style.animationDuration = null;
+                activeMarquee.style.setProperty('--marquee-distance', `0px`);
+                activeMarquee = null;
+            }
+        }
+        function startMarquee(event) {
+            stopMarquee();
+            const row = event.target.closest('.departure-row');
+            if (!row) return;
+
+            const dir = row.querySelector('.direction-text');
+            if (dir.scrollWidth > dir.clientWidth) {
+                const overflow = dir.clientWidth - dir.scrollWidth;
+                const duration = dir.scrollWidth / 40;
+                
+                dir.style.setProperty('--marquee-distance', `${overflow}px`);
+                dir.style.animationDuration = `${duration}s`;
+                dir.classList.add('is-scrolling');
+                activeMarquee = dir;
+            }
+        }
+        transitWidget.addEventListener('mousedown', startMarquee, true);
+        transitWidget.addEventListener('touchstart', startMarquee, true);
+        document.addEventListener('mouseup', stopMarquee, true);
+        document.addEventListener('touchend', stopMarquee, true);
+
 
         async function fetchAndDisplayEvents() { /* ... (unverändert) ... */ }
         function getContrastColor(hexColor) { /* ... (unverändert) ... */ }
