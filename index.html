@@ -7,85 +7,43 @@
     <title>Kalender Dashboard</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-
         :root {
             --color-bg: #111827;
             --color-text-dark: #1f2937;
             --color-text-light: #f9fafb;
         }
-
         html, body {
-            margin: 0;
-            padding: 0;
-            width: 100%;
-            height: 100%;
-            overflow: hidden;
-            position: fixed;
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; position: fixed;
         }
-
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background-color: var(--color-bg);
             color: var(--color-text-light);
-            display: flex; /* Wichtig, damit der Kalender-Container den ganzen Platz einnimmt */
-            flex-direction: column;
+            display: flex; flex-direction: column;
         }
-
         #calendar-dashboard {
-            padding: 24px;
-            display: grid;
+            padding: 24px; display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
-            gap: 24px;
-            flex-grow: 1; /* Nimmt den gesamten verfügbaren Platz ein */
-            overflow-y: auto;
-            -webkit-overflow-scrolling: touch;
+            gap: 24px; flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-
         .event-card {
-            color: var(--color-text-dark);
-            padding: 24px;
-            border-radius: 24px;
-            display: flex;
-            flex-direction: column;
+            color: var(--color-text-dark); padding: 24px; border-radius: 24px;
+            display: flex; flex-direction: column;
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
-
-        .event-card .content {
-            flex-grow: 1;
-        }
-
+        .event-card .content { flex-grow: 1; }
         .event-card h2 {
-            margin: 0;
-            font-size: 28px;
-            font-weight: 700;
-            word-break: break-word;
+            margin: 0; font-size: 28px; font-weight: 700; word-break: break-word;
         }
-
         .calendar-source {
-            font-weight: 700;
-            font-size: 14px;
-            margin: 8px 0 0 0;
-            padding: 4px 8px;
-            background-color: rgba(0,0,0,0.1);
-            border-radius: 6px;
-            display: inline-block;
+            font-weight: 700; font-size: 14px; margin: 8px 0 0 0;
+            padding: 4px 8px; background-color: rgba(0,0,0,0.1);
+            border-radius: 6px; display: inline-block;
         }
-
-        .event-details {
-            text-align: right;
-            margin-top: 24px;
-        }
-
-        .event-details .date {
-            font-size: 16px;
-            font-weight: 400;
-        }
-        
-        .event-details .time {
-            font-size: 36px;
-            font-weight: 900;
-        }
-
+        .event-details { text-align: right; margin-top: 24px; }
+        .event-details .date { font-size: 16px; font-weight: 400; }
+        .event-details .time { font-size: 36px; font-weight: 900; }
         @media (max-width: 600px) {
             body { padding: 0; }
             #calendar-dashboard { padding: 12px; grid-template-columns: 1fr; gap: 16px; }
@@ -96,35 +54,26 @@
     </style>
 </head>
 <body>
-    
-    <!-- Die Leiste mit dem Button wurde komplett entfernt -->
-    
     <div id="calendar-dashboard">
         <h2>Lade Kalenderdaten...</h2>
     </div>
-
     <script>
         const dashboard = document.getElementById('calendar-dashboard');
-        
-        // NEU: Definieren Sie hier Ihre Farben manuell.
         const colorMap = {
             'M&M': '#f4da63',
             'Maria': '#d3d3d3',
             'MK Solo': '#6dada9',
             'Bodo Banali': '#6dada9',
-            'default': '#e5e7eb' // Eine Standardfarbe, falls ein Kalendername nicht gefunden wird
+            'default': '#e5e7eb'
         };
-
-        // Helfer-Funktion, um die beste Textfarbe (schwarz/weiß) für eine Hintergrundfarbe zu finden
         function getContrastColor(hexColor) {
             if (!hexColor) return '#1f2937';
             const r = parseInt(hexColor.substr(1, 2), 16);
             const g = parseInt(hexColor.substr(3, 2), 16);
             const b = parseInt(hexColor.substr(5, 2), 16);
             const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.6 ? '#1f2937' : '#f9fafb'; // Schwellenwert angepasst für bessere Lesbarkeit
+            return luminance > 0.6 ? '#1f2937' : '#f9fafb';
         }
-
         async function fetchAndDisplayEvents() {
             try {
                 const response = await fetch('/.netlify/functions/getEvents');
@@ -135,23 +84,18 @@
                     dashboard.innerHTML = '<h2>Keine anstehenden Termine gefunden.</h2>';
                     return;
                 }
-                
                 events.forEach(event => {
                     const card = document.createElement('div');
                     card.className = 'event-card';
-
-                    // Setze die Hintergrund- und Textfarbe basierend auf unserer manuellen Farb-Tabelle
                     const bgColor = colorMap[event.calendarName] || colorMap['default'];
                     card.style.backgroundColor = bgColor;
                     const textColor = getContrastColor(bgColor);
                     card.style.color = textColor;
-
                     const startDate = new Date(event.start.dateTime || event.start.date);
                     const dateString = startDate.toLocaleDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' });
                     const timeString = event.start.dateTime 
                         ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'
                         : 'Ganztägig';
-                    
                     card.innerHTML = `
                         <div class="content">
                             <h2>${event.summary || '(Kein Titel)'}</h2>
@@ -165,4 +109,11 @@
                     dashboard.appendChild(card);
                 });
             } catch (error) {
-                dashboard.innerHTML = `<h2>Fehler: Daten konnten nicht geladen werden.<
+                dashboard.innerHTML = `<h2>Fehler: Daten konnten nicht geladen werden.</h2><p>Bitte prüfen Sie die Freigabe-Einstellungen Ihrer Kalender.</p>`;
+            }
+        }
+        fetchAndDisplayEvents();
+        setInterval(fetchAndDisplayEvents, 60000);
+    </script>
+</body>
+</html>
