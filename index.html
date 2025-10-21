@@ -14,42 +14,39 @@
             padding: 12px 24px; background-color: #1f2937; flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
         }
-        .transit-widget h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
-        .departures-list { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
-        .departure { background-color: #374151; padding: 8px 12px; border-radius: 8px; text-align: center; min-width: 90px; }
-        .departure .line { font-weight: 900; font-size: 20px; }
-        .departure .time { font-size: 18px; font-weight: 700; color: #f9fafb; }
-        .departure .delay { font-size: 12px; font-weight: 700; color: #fecaca; }
-        .departure .direction { font-size: 11px; color: #9ca3af; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; max-width: 90px; }
+        .transit-widget h3 { margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #d1d5db; }
+        .departures-list { display: flex; gap: 12px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+        .departure { background-color: #374151; padding: 6px 10px; border-radius: 8px; text-align: center; min-width: 80px; }
+        .departure .line { font-weight: 900; font-size: 18px; }
+        .departure .time { font-size: 16px; font-weight: 700; color: #f9fafb; }
+        .departure .delay { font-size: 11px; font-weight: 700; color: #fecaca; }
+        .departure .direction {
+            font-size: 14px; /* GRÖSSER */
+            font-weight: 700; /* FETT */
+            color: #9ca3af; white-space: nowrap; overflow: hidden;
+            text-overflow: ellipsis; max-width: 80px; margin-top: 4px;
+        }
         #calendar-dashboard {
-            padding: 24px; display: grid; grid-template-columns: 1fr; gap: 0; 
+            padding: 12px 0; /* Oben/unten Padding, aber seitlich bis zum Rand */
+            display: grid; grid-template-columns: 1fr; 
+            gap: 12px; /* Abstand zwischen den separaten Karten */
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
-        .event-card, .empty-day-card { border-bottom: 1px solid #374151; }
-        .event-card:first-child, .empty-day-card:first-child { border-top-left-radius: 24px; border-top-right-radius: 24px; }
-        .event-card:last-child, .empty-day-card:last-child { border-bottom-left-radius: 24px; border-bottom-right-radius: 24px; border-bottom: none; }
-        .event-card {
-            color: var(--color-text-dark); padding: 16px;
+        .event-card, .empty-day-card {
+            padding: 12px 16px; /* SCHMALER */
+            border-radius: 24px; /* STARK ABRUNDEN */
+            margin: 0 12px; /* Seitlicher Abstand, damit Karten nicht am Rand kleben */
             display: flex; flex-direction: column;
         }
+        .event-card { color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
         .event-card .content { flex-grow: 1; }
-        .event-card h2 { margin: 0; font-size: 20px; font-weight: 700; word-break: break-word; line-height: 1.3; }
-        .calendar-source { font-weight: 700; font-size: 12px; margin: 8px 0 0 0; padding: 4px 8px; background-color: rgba(0,0,0,0.1); border-radius: 6px; display: inline-block; }
-        .event-details { text-align: right; margin-top: 12px; }
-        .event-details .time { font-size: 16px; font-weight: 400; }
-        .event-details .date { font-size: 24px; font-weight: 900; }
-        .empty-day-card {
-            background-color: #1f2937; color: #9ca3af; padding: 12px 16px;
-            text-align: center; font-weight: 700; font-size: 14px;
-        }
-        @media (min-width: 768px) {
-            #calendar-dashboard { grid-template-columns: repeat(auto-fit, minmax(350px, 1fr)); gap: 24px; padding: 24px; }
-            .event-card, .empty-day-card { border-radius: 24px !important; border-bottom: none !important; }
-            .empty-day-card { background-color: #1f2937; }
-            .event-card h2 { font-size: 24px; }
-            .event-details .time { font-size: 18px; }
-            .event-details .date { font-size: 32px; }
-        }
+        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; } /* SCHMALER */
+        .calendar-source { font-size: 11px; margin: 6px 0 0 0; padding: 3px 6px; }
+        .event-details { text-align: right; margin-top: 8px; } /* SCHMALER */
+        .event-details .time { font-size: 14px; font-weight: 400; }
+        .event-details .date { font-size: 20px; font-weight: 900; } /* DATUM BLEIBT GROSS */
+        
+        .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -59,9 +56,9 @@
         <div id="departures-neukoelln" class="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
     
-    <div id="transit-widget-zeitzer" class="transit-widget">
-        <h3>Zeitzer Str.</h3>
-        <div id="departures-zeitzer" class="departures-list"><p>Lade Abfahrten...</p></div>
+    <div id="transit-widget-sonnenallee" class="transit-widget">
+        <h3>S Sonnenallee</h3>
+        <div id="departures-sonnenallee" class="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
 
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
@@ -80,19 +77,19 @@
                 
                 listElement.innerHTML = '';
                 if (!departures || departures.length === 0) {
-                    listElement.innerHTML = '<p style="color: #9ca3af; font-size: 14px;">Keine Daten verfügbar.</p>';
-                    return;
+                    listElement.innerHTML = '<p style="color: #9ca3af; font-size: 14px;">Keine Daten.</p>'; return;
                 }
                 departures.slice(0, 10).forEach(dep => {
                     const depElement = document.createElement('div');
                     depElement.className = 'departure';
                     const delayText = dep.delay > 0 ? `<div class="delay">+${dep.delay} min</div>` : '';
-                    depElement.innerHTML = `<div class="line">${dep.line}</div><div class="time">${dep.when}</div>${delayText}<div class="direction">${dep.direction}</div>`;
+                    // KORREKTUR DER ZEIT: Der Browser rechnet jetzt die Zeitzone um
+                    const timeString = dep.when ? new Date(dep.when).toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) : '?';
+
+                    depElement.innerHTML = `<div class="line">${dep.line}</div><div class="time">${timeString}</div>${delayText}<div class="direction">${dep.direction}</div>`;
                     listElement.appendChild(depElement);
                 });
-            } catch (error) {
-                listElement.innerHTML = '<p>Fehler beim Laden.</p>';
-            }
+            } catch (error) { listElement.innerHTML = '<p>Fehler.</p>'; }
         }
 
         async function fetchAndDisplayEvents() {
@@ -101,31 +98,30 @@
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
                 calendarDashboard.innerHTML = ''; const eventsByDate = {};
-                events.forEach(event => { const eventDate = new Date(event.start.dateTime || event.start.date); const dateKey = eventDate.toISOString().split('T')[0]; if (!eventsByDate[dateKey]) { eventsByDate[dateKey] = []; } eventsByDate[dateKey].push(event); });
-                const today = new Date();
+                events.forEach(event => { const d = new Date(event.start.dateTime || event.start.date); const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); if (!eventsByDate[key]) { eventsByDate[key] = []; } eventsByDate[key].push(event); });
+                
+                const today = new Date(); today.setHours(0,0,0,0);
+                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
                 for (let i = 0; i < 30; i++) {
-                    const currentDay = new Date(); currentDay.setDate(today.getDate() + i); const dateKey = currentDay.toISOString().split('T')[0];
+                    const currentDay = new Date(today); currentDay.setDate(today.getDate() + i);
+                    const dateKey = currentDay.toISOString();
+                    
                     if (eventsByDate[dateKey]) {
                         eventsByDate[dateKey].forEach(event => {
-                            const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date); const dateStringShort = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
-                            card.innerHTML = `<div class="content"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="event-details"><div class="date">${dateStringShort}</div><div class="time">${timeString}</div></div>`;
+                            const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date);
+                            let dateDisplayString;
+                            if (currentDay.getTime() === today.getTime()) {
+                                dateDisplayString = 'Heute';
+                            } else if (currentDay.getTime() === tomorrow.getTime()) {
+                                dateDisplayString = 'Morgen';
+                            } else {
+                                dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+                            }
+                            const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
+                            card.innerHTML = `<div class="content"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="event-details"><div class="date">${dateDisplayString}</div><div class="time">${timeString}</div></div>`;
                             calendarDashboard.appendChild(card);
                         });
                     } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); }
                 }
-            } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; }
-        }
-        function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
-
-        fetchAndDisplayEvents();
-        fetchTransitData('900078201', 'departures-neukoelln');
-        fetchTransitData('900019404', 'departures-zeitzer');
-
-        setInterval(fetchAndDisplayEvents, 60000);
-        setInterval(() => {
-            fetchTransitData('900078201', 'departures-neukoelln');
-            fetchTransitData('900019404', 'departures-zeitzer');
-        }, 30000);
-    </script>
-</body>
-</html>
+            } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kal
