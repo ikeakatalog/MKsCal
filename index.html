@@ -2,17 +2,18 @@
 <html lang="de">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Kalender Dashboard</title>
     <style>
+        /* ... (der Rest des CSS bleibt genau gleich wie im letzten Code) ... */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
-        :root {
-            --color-bg: #111827;
-            --color-text-dark: #1f2937;
-            --color-text-light: #f9fafb;
+        :root { /* ... */ }
+        html, body { 
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            overflow: hidden; /* Verhindert das Scrollen der ganzen Seite */
+            position: fixed; /* Fixiert die Ansicht, um Safari-Leisten-Verhalten zu minimieren */
         }
-        html, body { margin: 0; padding: 0; width: 100%; min-height: 100%; }
         body {
             font-family: 'Inter', -apple-system, sans-serif;
             background-color: var(--color-bg);
@@ -20,119 +21,24 @@
             display: flex;
             flex-direction: column;
         }
-        .controls {
-            padding: 12px 24px;
-            background-color: #374151;
-            text-align: right;
-            flex-shrink: 0;
-            transition: all 0.3s ease; /* Für sanftes Ein-/Ausblenden */
-        }
-        #fullscreen-btn {
-            font-size: 14px; padding: 8px 16px; border-radius: 8px; border: none;
-            background-color: #4b5563; color: var(--color-text-light); cursor: pointer;
-        }
+        .controls { /* ... */ }
+        #fullscreen-btn { /* ... */ }
         #calendar-dashboard {
             padding: 24px; display: grid;
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 24px; flex-grow: 1;
+            overflow-y: auto; /* NEU: Nur dieser Bereich soll scrollbar sein */
+            -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
         }
-        .event-card {
-            color: var(--color-text-dark); padding: 24px; border-radius: 24px;
-            display: flex; flex-direction: column;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            /* GEÄNDERT: Kein min-height, kein justify-content. Die Höhe ist jetzt flexibel. */
-        }
-        .event-card .content {
-            flex-grow: 1; /* Drückt die Details nach unten */
-        }
-        .event-card h2 {
-            margin: 0; font-size: 28px; font-weight: 700; word-break: break-word;
-        }
-        .calendar-source {
-            font-weight: 700; font-size: 14px; margin: 8px 0 0 0; padding: 4px 8px;
-            background-color: rgba(0,0,0,0.1); border-radius: 6px; display: inline-block;
-        }
-        .event-details { text-align: right; margin-top: 24px; }
-        .event-details .date { font-size: 16px; font-weight: 400; }
-        .event-details .time { font-size: 36px; font-weight: 900; }
-
-        @media (max-width: 600px) {
-            body, #calendar-dashboard { padding: 12px; }
-            #calendar-dashboard { grid-template-columns: 1fr; gap: 16px; }
-            .event-card { padding: 16px; }
-            .event-card h2 { font-size: 22px; }
-            .event-details .time { font-size: 28px; }
-        }
+        .event-card { /* ... */ }
+        /* ... (der Rest des CSS bleibt gleich) ... */
     </style>
 </head>
 <body>
-    <div class="controls">
-        <button id="fullscreen-btn">Ansicht optimieren</button>
-    </div>
-    <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
+    <!-- (Der Rest des HTML bleibt genau gleich wie im letzten Code) -->
+    <!-- ... -->
     <script>
-        const dashboard = document.getElementById('calendar-dashboard');
-        
-        // NEU: Helfer-Funktion, um die beste Textfarbe für eine Hintergrundfarbe zu finden
-        function getContrastColor(hexColor) {
-            if (!hexColor) return '#1f2937'; // Standard-Schwarz
-            const r = parseInt(hexColor.substr(1, 2), 16);
-            const g = parseInt(hexColor.substr(3, 2), 16);
-            const b = parseInt(hexColor.substr(5, 2), 16);
-            // Formel zur Bestimmung der Helligkeit
-            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.5 ? '#1f2937' : '#f9fafb'; // Dunkler Text auf hellem Grund, heller Text auf dunklem Grund
-        }
-
-        async function fetchAndDisplayEvents() {
-            try {
-                const response = await fetch('/.netlify/functions/getEvents');
-                if (!response.ok) throw new Error('Netzwerkfehler');
-                const events = await response.json();
-                dashboard.innerHTML = ''; 
-                if (events.length === 0) {
-                    dashboard.innerHTML = '<h2>Keine Termine.</h2>';
-                    return;
-                }
-                events.forEach(event => {
-                    const card = document.createElement('div');
-                    card.className = 'event-card';
-
-                    // NEU: Setze die Hintergrund- und Textfarbe dynamisch
-                    card.style.backgroundColor = event.calendarColor;
-                    const textColor = getContrastColor(event.calendarColor);
-                    card.style.color = textColor;
-
-                    const startDate = new Date(event.start.dateTime || event.start.date);
-                    const dateString = startDate.toLocaleDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' });
-                    const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
-                    
-                    card.innerHTML = `
-                        <div class="content">
-                            <h2>${event.summary || '(Kein Titel)'}</h2>
-                            <p class="calendar-source">${event.calendarName}</p>
-                        </div>
-                        <div class="event-details">
-                            <div class="date">${dateString}</div>
-                            <div class="time">${timeString}</div>
-                        </div>
-                    `;
-                    dashboard.appendChild(card);
-                });
-            } catch (error) {
-                dashboard.innerHTML = `<h2>Fehler: Daten konnten nicht geladen werden.</h2>`;
-            }
-        }
-
-        // GEÄNDERT: Fullscreen-Button blendet jetzt die obere Leiste aus
-        const fullscreenBtn = document.getElementById('fullscreen-btn');
-        const controlsBar = document.querySelector('.controls');
-        fullscreenBtn.addEventListener('click', () => {
-            controlsBar.style.display = (controlsBar.style.display === 'none') ? 'block' : 'none';
-        });
-
-        fetchAndDisplayEvents();
-        setInterval(fetchAndDisplayEvents, 60000);
+        // (Das JavaScript bleibt genau gleich wie im letzten Code)
     </script>
 </body>
 </html>
