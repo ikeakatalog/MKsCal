@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Combined Calendars</title>
+    <style>
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #f4f7f6;
+            margin: 0;
+            padding: 20px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        h1 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .calendar-container {
+            width: 95%;
+            max-width: 1200px; /* Adjust max width as needed */
+            height: 80vh; /* Make the calendar take up 80% of the viewport height */
+            box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+            border-radius: 8px;
+            overflow: hidden; /* Ensures the iframe corners are rounded */
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>Team and Project Calendars</h1>
+
+    <div class="calendar-container">
+        <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=Europe%2FBerlin&showTitle=0&showNav=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&src=ZzZuZDlmb2R2cGJuYzhjNTFkNTkxYWhkbGdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&src=NjllNWZjZDNiZjkzMzQ4ZGEwNjJiZjg4ZDkxNTA2MmU3OGMzZjlmMzc3NTI5NmI5NjIwYTA2OTJkNWUxYTI1YUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%237986CB&color=%23E67C73" ></iframe>
+    </div>
+
+</body>
+</html>
