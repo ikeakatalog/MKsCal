@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- DIESE ZEILE IST NEU: Sie sorgt für ein automatisches Neuladen alle 60 Sekunden -->
+    <meta http-equiv="refresh" content="60">
+    <title>Meine Kalender</title>
+    <style>
+        /* Make the page take up the full screen with no margins */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Hide any potential scrollbars */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column; /* Arrange items vertically */
+        }
+        /* A small bar at the top to hold the button */
+        .controls {
+            padding: 8px;
+            background-color: #f0f0f0;
+            text-align: right; /* Position button to the right */
+            border-bottom: 1px solid #ddd;
+        }
+        #fullscreen-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        /* The container for the calendar will grow to fill all remaining space */
+        .calendar-container {
+            flex-grow: 1;
+            width: 100%;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="fullscreen-btn">Fullscreen an/aus</button>
+    </div>
+
+    <div class="calendar-container">
+        <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=Europe%2FBerlin&showTitle=0&showNav=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&src=ZzZuZDlmb2R2cGJuYzhjNTFkNTkxYWhkbGdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&src=NjllNWZjZDNiZjkzMzQ8ZGEwNjJiZjg4ZDkxNTA2MmU3OGMzZjlmMzc3NTI5NmI5NjIwYTA2OTJkNWUxYTI1YUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%237986CB&color=%23E67C73" ></iframe>
+    </div>
+
+    <script>
+        // --- Robuste Fullscreen-Funktionalität ---
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const docElement = document.documentElement;
+
+        function enterFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { /* Firefox */
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { /* IE/Edge */
+                element.msRequestFullscreen();
+            }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            
+            if (!isFullscreen) {
+                enterFullscreen(docElement);
+            } else {
+                exitFullscreen();
+            }
+        });
+
+        // HINWEIS: Die Funktion, die den Bildschirm wach hält, wurde hier nicht wieder hinzugefügt, 
+        // um die Komplexität gering zu halten und sicherzustellen, dass alles stabil läuft.
+        // Wenn Sie sie wieder haben möchten, sagen Sie Bescheid!
+    </script>
+
+</body>
+</html>
