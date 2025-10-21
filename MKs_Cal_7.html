@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Kalender Dashboard</title>
+    <style>
+        /* Import einer modernen, klaren Schriftart */
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
+
+        /* Definition der Farbpalette für einfache Wiederverwendung */
+        :root {
+            --color-bg: #111827;
+            --color-card-1: #e9d5ff; /* Lila */
+            --color-card-2: #e5e7eb; /* Grau */
+            --color-card-3: #fecaca; /* Rot */
+            --color-card-4: #a7f3d0; /* Grün */
+            --color-text-dark: #1f2937;
+            --color-text-light: #f9fafb;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: var(--color-bg);
+            margin: 0;
+            padding: 24px;
+            color: var(--color-text-light);
+        }
+
+        #calendar-dashboard {
+            display: grid;
+            /* Responsives Grid: Erstellt automatisch so viele Spalten wie passen */
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 24px;
+        }
+
+        .event-card {
+            background-color: var(--color-card-1);
+            color: var(--color-text-dark);
+            padding: 24px;
+            border-radius: 24px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            min-height: 180px;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        
+        /* Zuweisung der verschiedenen Farben an die Karten */
+        .event-card.color-1 { background-color: var(--color-card-1); }
+        .event-card.color-2 { background-color: var(--color-card-2); }
+        .event-card.color-3 { background-color: var(--color-card-3); }
+        .event-card.color-4 { background-color: var(--color-card-4); }
+
+        .event-card h2 {
+            margin: 0;
+            font-size: 28px;
+            font-weight: 700;
+            word-break: break-word; /* Verhindert Überlaufen bei langen Wörtern */
+        }
+        
+        .event-details {
+            text-align: right;
+            margin-top: 16px;
+        }
+
+        .event-details .date {
+            font-size: 16px;
+            font-weight: 400;
+        }
+        
+        .event-details .time {
+            font-size: 36px;
+            font-weight: 900;
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Dieser Container wird mit den Kalender-Karten gefüllt -->
+    <div id="calendar-dashboard">
+        <!-- Ein Ladehinweis, der zu Beginn angezeigt wird -->
+        <h2>Lade Kalenderdaten...</h2>
+    </div>
+
+    <script>
+        // Diese Hauptfunktion holt die Daten und baut die Anzeige auf
+        async function fetchAndDisplayEvents() {
+            const dashboard = document.getElementById('calendar-dashboard');
+
+            try {
+                // Schritt 1: Rufe die Daten von unserer sicheren Netlify Function ab
+                const response = await fetch('/.netlify/functions/getEvents');
+                
+                if (!response.ok) {
+                    throw new Error('Netzwerkfehler: Die Daten konnten nicht vom Server geladen werden.');
+                }
+                
+                const events = await response.json();
+
+                // Schritt 2: Leere den "Lade..."-Hinweis
+                dashboard.innerHTML = ''; 
+
+                // Schritt 3: Prüfe, ob Termine vorhanden sind
+                if (events.length === 0) {
+                    dashboard.innerHTML = '<h2>Keine anstehenden Termine gefunden.</h2>';
+                    return;
+                }
+
+                // Schritt 4: Erstelle für jeden Termin eine Karte
+                const colors = ['color-1', 'color-2', 'color-3', 'color-4'];
+                
+                events.forEach((event, index) => {
+                    const card = document.createElement('div');
+                    // Weise den Karten abwechselnd eine Farbe zu
+                    card.className = `event-card ${colors[index % colors.length]}`;
+
+                    // Formatiere Datum und Uhrzeit für eine schöne Anzeige
+                    const startDate = new Date(event.start.dateTime || event.start.date);
+                    
+                    const dateString = startDate.toLocaleDateString('de-DE', { 
+                        weekday: 'long', month: 'long', day: 'numeric' 
+                    });
+                    
+                    const timeString = event.start.dateTime 
+                        ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'
+                        : 'Ganztägig';
+
+                    // Fülle die Karte mit den Termininformationen
+                    card.innerHTML = `
+                        <div>
+                            <h2>${event.summary || '(Kein Titel)'}</h2>
+                        </div>
+                        <div class="event-details">
+                            <div class="date">${dateString}</div>
+                            <div class="time">${timeString}</div>
+                        </div>
+                    `;
+                    
+                    dashboard.appendChild(card);
+                });
+
+            } catch (error) {
+                // Zeige eine Fehlermeldung an, wenn etwas schiefgeht
+                dashboard.innerHTML = `<h2>Fehler beim Laden der Termine</h2><p>${error.message}</p>`;
+                console.error('Detailierter Fehler:', error);
+            }
+        }
+
+        // Führe die Funktion aus, wenn die Seite geladen ist
+        fetchAndDisplayEvents();
+
+        // Richte eine automatische Aktualisierung alle 60 Sekunden (60000 Millisekunden) ein
+        setInterval(fetchAndDisplayEvents, 60000);
+    </script>
+</body>
+</html>
