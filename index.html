@@ -31,20 +31,10 @@
         }
         .line-info { display: flex; align-items: center; gap: 5px; min-width: 45px; }
         .line-info .platform { font-size: 12px; color: #9ca3af; font-weight: 700; }
-        
-        /* KORREKTUR: Manuelles Scrollen statt Laufschrift */
-        .direction-wrapper {
-            flex-grow: 1;
-            white-space: nowrap;
-            overflow-x: auto; /* Erlaubt horizontales Scrollen bei Bedarf */
-            -webkit-overflow-scrolling: touch; /* Flüssiges Scrollen auf iOS */
-        }
-        /* Versteckt die Scrollleiste, aber das Scrollen bleibt möglich */
+        .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow-x: auto; }
         .direction-wrapper::-webkit-scrollbar { display: none; }
         .direction-wrapper { scrollbar-width: none; }
-
         .direction-text { font-size: 16px; font-weight: 700; display: inline-block; }
-
         .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
         .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
         .meta-info .station { font-size: 14px; font-weight: 900; }
@@ -52,27 +42,29 @@
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        /* KORREKTUR: Kalender-Layout wiederhergestellt */
+        /* KORREKTUR: Kalender-Layout */
         #calendar-dashboard {
-            padding: 1px 0px; /* Oben/unten und seitlicher Abstand für den Scroll-Container */
+            padding: 16px 12px;
             display: grid; grid-template-columns: 1fr; 
-            gap: 1px; /* Abstand ZWISCHEN den Karten */
+            gap: 12px;
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card {
-            border-radius: 40px; /* Stark abgerundete Ecken für JEDE Karte */
-            padding: 12px 20px; /* Innenabstand für den Inhalt */
+            border-radius: 40px; /* IHR WUNSCH */
+            padding: 12px 20px; /* IHR WUNSCH */
         }
         .event-card {
-            display: flex; align-items: center; justify-content: space-between; /* Zweispaltiges Layout */
+            display: flex; align-items: center; justify-content: space-between;
             color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .event-card .info { text-align: left; }
-        .event-card .datetime { text-align: right; }
-        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; } /* Kompakte Schrift */
+        .event-card .datetime { text-align: right; display: flex; align-items: baseline; gap: 8px; }
+        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; }
         .calendar-source { font-size: 11px; margin-top: 6px; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
+        .datetime .date-block { text-align: right; }
         .datetime .time { font-size: 14px; font-weight: 400; }
         .datetime .date { font-size: 20px; font-weight: 900; }
+        .datetime .days-until { font-size: 12px; color: #6b7280; font-weight: 700; }
         .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; padding: 8px; }
     </style>
 </head>
@@ -81,27 +73,13 @@
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
     <script>
-        // --- DER GESAMTE SCRIPT-BLOCK WURDE BEREINIGT UND IST JETZT KORREKT ---
-
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
         const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function getTransitSymbol(product) {
-            switch(product) {
-                case 'suburban': return 'S';
-                case 'subway': return 'U';
-                case 'bus': return 'B';
-                default: return '';
-            }
-        }
-        
-        function getTimeClass(minutes) {
-            if (minutes < 5) return 'time-soon';
-            if (minutes <= 10) return 'time-medium';
-            return 'time-far';
-        }
+        function getTransitSymbol(product) { /* ... (unverändert) ... */ }
+        function getTimeClass(minutes) { /* ... (unverändert) ... */ }
 
         async function fetchTransitData() {
             try {
@@ -140,7 +118,7 @@
                         </div>
                     `;
                     transitWidget.appendChild(depElement);
-                });
+});
 
             } catch (error) {
                 transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
@@ -160,8 +138,10 @@
                     if (!eventsByDate[key]) { eventsByDate[key] = []; }
                     eventsByDate[key].push(event);
                 });
+                
                 const today = new Date(); today.setHours(0, 0, 0, 0);
                 const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
                 for (let i = 0; i < 30; i++) {
                     const currentDay = new Date(today);
                     currentDay.setDate(today.getDate() + i);
@@ -175,10 +155,18 @@
                             const textColor = getContrastColor(bgColor);
                             card.style.color = textColor;
                             const startDate = new Date(event.start.dateTime || event.start.date);
+                            
+                            const diffTime = currentDay.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
                             let dateDisplayString;
-                            if (currentDay.getTime() === today.getTime()) { dateDisplayString = 'Heute'; } 
-                            else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } 
-                            else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); }
+                            let daysUntilString = '';
+                            if (diffDays === 0) { dateDisplayString = 'Heute'; } 
+                            else if (diffDays === 1) { dateDisplayString = 'Morgen'; } 
+                            else {
+                                dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+                                daysUntilString = `<div class="days-until">in ${diffDays} T</div>`;
+                            }
                             const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
                             
                             card.innerHTML = `
@@ -187,8 +175,11 @@
                                     <p class="calendar-source">${event.calendarName}</p>
                                 </div>
                                 <div class="datetime">
-                                    <div class="date">${dateDisplayString}</div>
-                                    <div class="time">${timeString}</div>
+                                    ${daysUntilString}
+                                    <div class="date-block">
+                                        <div class="date">${dateDisplayString}</div>
+                                        <div class="time">${timeString}</div>
+                                    </div>
                                 </div>
                             `;
                             calendarDashboard.appendChild(card);
@@ -205,14 +196,12 @@
             }
         }
         
-        function getContrastColor(hexColor) {
-            if (!hexColor) return '#1f2937';
-            const r = parseInt(hexColor.substr(1, 2), 16);
-            const g = parseInt(hexColor.substr(3, 2), 16);
-            const b = parseInt(hexColor.substr(5, 2), 16);
-            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.6 ? '#1f2937' : '#f9fafb';
-        }
+        function getContrastColor(hexColor) { /* ... (unverändert) ... */ }
+        
+        // Fügen Sie die unveränderten Funktionen hier ein
+        getTransitSymbol = (product) => { switch(product) { case 'suburban': return 'S'; case 'subway': return 'U'; case 'bus': return 'B'; default: return ''; } }
+        getTimeClass = (minutes) => { if (minutes < 5) return 'time-soon'; if (minutes <= 10) return 'time-medium'; return 'time-far'; }
+        getContrastColor = (hexColor) => { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
 
         fetchAndDisplayEvents();
         fetchTransitData();
