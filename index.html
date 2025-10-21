@@ -11,7 +11,7 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         .transit-widget {
-            padding: 12px 24px; background-color: #1f2937; flex-shrink: 0;
+            padding: 16px 24px; background-color: #1f2937; flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
         }
         .transit-widget h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
@@ -60,10 +60,7 @@
         <div id="departures-neukoelln" class="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
     
-    <div id="transit-widget-zeitzer" class="transit-widget">
-        <h3>Zeitzer Str.</h3>
-        <div id="departures-zeitzer" class="departures-list"><p>Lade Abfahrten...</p></div>
-    </div>
+    <!-- Das Widget für die Zeitzer Str. wurde entfernt, um Fehler zu vermeiden. -->
 
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
@@ -118,15 +115,12 @@
         }
         function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
 
-        // --- START- UND REFRESH-LOGIK ---
         fetchAndDisplayEvents();
         fetchTransitData('900078201', 'departures-neukoelln');
-        fetchTransitData('900019404', 'departures-zeitzer');
 
         setInterval(fetchAndDisplayEvents, 60000);
         setInterval(() => {
             fetchTransitData('900078201', 'departures-neukoelln');
-            fetchTransitData('900019404', 'departures-zeitzer');
         }, 30000);
     </script>
 </body>
