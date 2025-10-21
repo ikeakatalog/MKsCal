@@ -1,27 +1,41 @@
-// This code runs securely on Netlify's servers, not in the user's browser.
+// This code runs securely on Netlify's servers.
 const { google } = require('googleapis');
 
-// NEU: Eine "Übersetzungstabelle", die Kalender-IDs zu lesbaren Namen zuordnet.
-const calendarNames = {
-    'q1loacs0ih9e9aife87lfvpnj8@group.calendar.google.com': 'M&M',
-    'guertler.maria@googlemail.com': 'Maria',
-    'g6nd9fodvpbnc8c51d591ahdlg@group.calendar.google.com': 'MK Solo',
-    'bodobanali@googlemail.com': 'Bodo Banali'
-};
-
 // Die Liste der Kalender-IDs, die wir abfragen wollen.
-const calendarIds = Object.keys(calendarNames);
+const calendarIds = [
+    'q1loacs0ih9e9aife87lfvpnj8@group.calendar.google.com',      // M&M
+    'guertler.maria@googlemail.com',                           // Maria
+    'g6nd9fodvpbnc8c51d591ahdlg@group.calendar.google.com',      // MK Solo
+    'bodobanali@googlemail.com'                                // Bodo Banali
+];
 
 exports.handler = async function (event, context) {
     const apiKey = process.env.GOOGLE_API_KEY;
     const calendar = google.calendar({ version: 'v3', auth: apiKey });
 
     try {
+        // SCHRITT 1: Hole die Details (inkl. Farbe) von JEDEM Kalender.
+        const calendarDetailsPromises = calendarIds.map(calId =>
+            calendar.calendars.get({ calendarId: calId })
+        );
+        const calendarDetailsResults = await Promise.all(calendarDetailsPromises);
+        
+        // Erstelle eine "Übersetzungstabelle" von ID zu Farbe und Name.
+        const calendarInfoMap = {};
+        calendarDetailsResults.forEach(result => {
+            const cal = result.data;
+            calendarInfoMap[cal.id] = {
+                name: cal.summary,
+                color: cal.backgroundColor
+            };
+        });
+
+        // SCHRITT 2: Hole die Termine wie zuvor.
         const now = new Date();
         const futureLimit = new Date();
-        futureLimit.setDate(now.getDate() + 30); // Termine der nächsten 30 Tage
+        futureLimit.setDate(now.getDate() + 30);
 
-        const promises = calendarIds.map(calId =>
+        const eventPromises = calendarIds.map(calId =>
             calendar.events.list({
                 calendarId: calId,
                 timeMin: now.toISOString(),
@@ -32,16 +46,20 @@ exports.handler = async function (event, context) {
             })
         );
 
-        const results = await Promise.all(promises);
+        const eventResults = await Promise.all(eventPromises);
         
-        // GEÄNDERTE LOGIK: Wir fügen jetzt den Kalendernamen zu jedem Termin hinzu.
-        const allEvents = results.flatMap((result, index) => {
+        // SCHRITT 3: Kombiniere die Termine mit den Kalender-Infos.
+        const allEvents = eventResults.flatMap((result, index) => {
             const calendarId = calendarIds[index];
-            const name = calendarNames[calendarId] || 'Unbekannt'; // Finde den Namen in unserer Tabelle
+            const info = calendarInfoMap[calendarId] || { name: 'Unbekannt', color: '#e5e7eb' };
             const events = result.data.items || [];
             
-            // Füge jedem Termin das neue Feld "calendarName" hinzu
-            return events.map(event => ({ ...event, calendarName: name }));
+            // Füge jedem Termin den Namen UND die Farbe des Kalenders hinzu.
+            return events.map(event => ({
+                ...event,
+                calendarName: info.name,
+                calendarColor: info.color
+            }));
         }).sort((a, b) => new Date(a.start.dateTime || a.start.date) - new Date(b.start.dateTime || b.start.date));
 
         return {
@@ -49,10 +67,10 @@ exports.handler = async function (event, context) {
             body: JSON.stringify(allEvents),
         };
     } catch (error) {
-        console.error('Error fetching calendar events:', error);
+        console.error('Error fetching calendar data:', error.message);
         return {
             statusCode: 500,
-            body: JSON.stringify({ error: 'Failed to fetch calendar events.' }),
+            body: JSON.stringify({ error: 'Failed to fetch calendar data.' }),
         };
     }
 };
