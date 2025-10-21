@@ -42,30 +42,29 @@
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        /* KORREKTUR: Kalender-Layout */
+        /* --- FINALES KALENDER-DESIGN (NACH IHREN VORGABEN) --- */
         #calendar-dashboard {
-            padding: 16px 12px;
+            padding: 1px 0px;
             display: grid; grid-template-columns: 1fr; 
-            gap: 12px;
+            gap: 1px;
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card {
-            border-radius: 40px; /* IHR WUNSCH */
-            padding: 12px 20px; /* IHR WUNSCH */
+            border-radius: 40px;
+            padding: 12px 20px;
         }
         .event-card {
             display: flex; align-items: center; justify-content: space-between;
             color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         .event-card .info { text-align: left; }
-        .event-card .datetime { text-align: right; display: flex; align-items: baseline; gap: 8px; }
+        .event-card .datetime { text-align: right; display: flex; align-items: baseline; gap: 8px; white-space: nowrap; }
         .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; }
         .calendar-source { font-size: 11px; margin-top: 6px; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
-        .datetime .date-block { text-align: right; }
         .datetime .time { font-size: 14px; font-weight: 400; }
         .datetime .date { font-size: 20px; font-weight: 900; }
         .datetime .days-until { font-size: 12px; color: #6b7280; font-weight: 700; }
-        .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; padding: 8px; }
+        .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; }
     </style>
 </head>
 <body>
@@ -81,49 +80,7 @@
         function getTransitSymbol(product) { /* ... (unverändert) ... */ }
         function getTimeClass(minutes) { /* ... (unverändert) ... */ }
 
-        async function fetchTransitData() {
-            try {
-                const response = await fetch(CLOUDFLARE_WORKER_URL + 'transit');
-                if (!response.ok) throw new Error('Netzwerkfehler');
-                const departures = await response.json();
-                
-                transitWidget.innerHTML = '';
-                if (!departures || departures.length === 0) {
-                    transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Keine Abfahrten gefunden.</p>'; return;
-                }
-                departures.slice(0, 30).forEach(dep => {
-                    const depElement = document.createElement('div');
-                    depElement.className = 'departure-row';
-                    
-                    const now = new Date();
-                    const departureTime = new Date(dep.when);
-                    const minutesFromNow = Math.round((departureTime - now) / 60000);
-                    const absoluteTime = departureTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' });
-                    
-                    const timeClass = getTimeClass(minutesFromNow);
-                    const timeInfo = `${absoluteTime} <span class="rel-time ${timeClass}">(${minutesFromNow} Min)</span>`;
-                    const symbol = getTransitSymbol(dep.product);
-                    const platformText = dep.platform ? `<span class="platform">${dep.platform.replace(/Gl\.\s|Pos\.\s/g, '')}</span>` : '';
-
-                    depElement.innerHTML = `
-                        <div class="line-symbol">${symbol}</div>
-                        <div class="line-info">
-                            <span>${dep.line}</span>
-                            ${platformText}
-                        </div>
-                        <div class="direction-wrapper"><span class="direction-text">${dep.direction}</span></div>
-                        <div class="meta-info">
-                            <div class="time-info">${timeInfo}</div>
-                            <div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div>
-                        </div>
-                    `;
-                    transitWidget.appendChild(depElement);
-});
-
-            } catch (error) {
-                transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
-            }
-        }
+        async function fetchTransitData() { /* ... (unverändert) ... */ }
 
         async function fetchAndDisplayEvents() {
             try {
@@ -165,7 +122,8 @@
                             else if (diffDays === 1) { dateDisplayString = 'Morgen'; } 
                             else {
                                 dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
-                                daysUntilString = `<div class="days-until">in ${diffDays} T</div>`;
+                                // KORREKTUR: "in" und Leerzeichen entfernt
+                                daysUntilString = `<div class="days-until">${diffDays}T</div>`;
                             }
                             const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
                             
@@ -202,6 +160,7 @@
         getTransitSymbol = (product) => { switch(product) { case 'suburban': return 'S'; case 'subway': return 'U'; case 'bus': return 'B'; default: return ''; } }
         getTimeClass = (minutes) => { if (minutes < 5) return 'time-soon'; if (minutes <= 10) return 'time-medium'; return 'time-far'; }
         getContrastColor = (hexColor) => { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
+        fetchTransitData = async () => { try { const response = await fetch(CLOUDFLARE_WORKER_URL + 'transit'); if (!response.ok) throw new Error('Netzwerkfehler'); const departures = await response.json(); transitWidget.innerHTML = ''; if (!departures || departures.length === 0) { transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Keine Abfahrten gefunden.</p>'; return; } departures.slice(0, 30).forEach(dep => { const depElement = document.createElement('div'); depElement.className = 'departure-row'; const now = new Date(); const departureTime = new Date(dep.when); const minutesFromNow = Math.round((departureTime - now) / 60000); const absoluteTime = departureTime.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }); const timeClass = getTimeClass(minutesFromNow); const timeInfo = `${absoluteTime} <span class="rel-time ${timeClass}">(${minutesFromNow} Min)</span>`; const symbol = getTransitSymbol(dep.product); const platformText = dep.platform ? `<span class="platform">${dep.platform.replace(/Gl\.\s|Pos\.\s/g, '')}</span>` : ''; depElement.innerHTML = `<div class="line-symbol">${symbol}</div><div class="line-info"><span>${dep.line}</span>${platformText}</div><div class="direction-wrapper"><span class="direction-text">${dep.direction}</span></div><div class="meta-info"><div class="time-info">${timeInfo}</div><div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div></div>`; transitWidget.appendChild(depElement); }); } catch (error) { transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>'; } }
 
         fetchAndDisplayEvents();
         fetchTransitData();
