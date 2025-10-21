@@ -5,10 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Kalender Dashboard</title>
     <style>
-        /* Import einer modernen, klaren Schriftart */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
 
-        /* Definition der Farbpalette für einfache Wiederverwendung */
         :root {
             --color-bg: #111827;
             --color-card-1: #e9d5ff; /* Lila */
@@ -19,19 +17,46 @@
             --color-text-light: #f9fafb;
         }
 
-        body {
-            font-family: 'Inter', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            background-color: var(--color-bg);
+        /* Grund-Layout für die gesamte Seite */
+        html, body {
             margin: 0;
-            padding: 24px;
-            color: var(--color-text-light);
+            padding: 0;
+            width: 100%;
+            min-height: 100%; /* Wichtig für Flexbox */
         }
 
+        body {
+            font-family: 'Inter', -apple-system, sans-serif;
+            background-color: var(--color-bg);
+            color: var(--color-text-light);
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* NEU: Leiste für den Fullscreen-Button */
+        .controls {
+            padding: 12px 24px;
+            background-color: #374151;
+            text-align: right;
+            flex-shrink: 0;
+        }
+        #fullscreen-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+            border-radius: 8px;
+            border: none;
+            background-color: #4b5563;
+            color: var(--color-text-light);
+            cursor: pointer;
+        }
+
+        /* Das Grid für die Termine */
         #calendar-dashboard {
+            padding: 24px;
             display: grid;
-            /* Responsives Grid: Erstellt automatisch so viele Spalten wie passen */
             grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
             gap: 24px;
+            flex-grow: 1;
         }
 
         .event-card {
@@ -46,7 +71,6 @@
             box-shadow: 0 4px 15px rgba(0,0,0,0.2);
         }
         
-        /* Zuweisung der verschiedenen Farben an die Karten */
         .event-card.color-1 { background-color: var(--color-card-1); }
         .event-card.color-2 { background-color: var(--color-card-2); }
         .event-card.color-3 { background-color: var(--color-card-3); }
@@ -56,7 +80,19 @@
             margin: 0;
             font-size: 28px;
             font-weight: 700;
-            word-break: break-word; /* Verhindert Überlaufen bei langen Wörtern */
+            word-break: break-word;
+        }
+        
+        /* NEU: Styling für den Kalendernamen */
+        .calendar-source {
+            font-weight: 700;
+            font-size: 14px;
+            color: #4b5563;
+            margin: 8px 0 0 0;
+            padding: 4px 8px;
+            background-color: rgba(0,0,0,0.05);
+            border-radius: 6px;
+            display: inline-block; /* Passt sich der Textlänge an */
         }
         
         .event-details {
@@ -73,84 +109,106 @@
             font-size: 36px;
             font-weight: 900;
         }
+
+        /* NEU: Anpassungen für kleine Bildschirme (iPhones) */
+        @media (max-width: 600px) {
+            body, #calendar-dashboard {
+                padding: 12px;
+            }
+            #calendar-dashboard {
+                /* Auf Handys nur eine Spalte, damit die Karten untereinander sind */
+                grid-template-columns: 1fr;
+                gap: 16px;
+            }
+            .event-card {
+                padding: 16px;
+                min-height: 150px;
+            }
+            .event-card h2 {
+                font-size: 22px; /* Kleinere Überschrift */
+            }
+            .event-details .time {
+                font-size: 28px; /* Kleinere Uhrzeit */
+            }
+        }
     </style>
 </head>
 <body>
 
-    <!-- Dieser Container wird mit den Kalender-Karten gefüllt -->
+    <div class="controls">
+        <button id="fullscreen-btn">Vollbild</button>
+    </div>
+    
     <div id="calendar-dashboard">
-        <!-- Ein Ladehinweis, der zu Beginn angezeigt wird -->
         <h2>Lade Kalenderdaten...</h2>
     </div>
 
     <script>
-        // Diese Hauptfunktion holt die Daten und baut die Anzeige auf
         async function fetchAndDisplayEvents() {
             const dashboard = document.getElementById('calendar-dashboard');
-
             try {
-                // Schritt 1: Rufe die Daten von unserer sicheren Netlify Function ab
                 const response = await fetch('/.netlify/functions/getEvents');
-                
                 if (!response.ok) {
                     throw new Error('Netzwerkfehler: Die Daten konnten nicht vom Server geladen werden.');
                 }
-                
                 const events = await response.json();
-
-                // Schritt 2: Leere den "Lade..."-Hinweis
                 dashboard.innerHTML = ''; 
-
-                // Schritt 3: Prüfe, ob Termine vorhanden sind
                 if (events.length === 0) {
                     dashboard.innerHTML = '<h2>Keine anstehenden Termine gefunden.</h2>';
                     return;
                 }
-
-                // Schritt 4: Erstelle für jeden Termin eine Karte
                 const colors = ['color-1', 'color-2', 'color-3', 'color-4'];
-                
                 events.forEach((event, index) => {
                     const card = document.createElement('div');
-                    // Weise den Karten abwechselnd eine Farbe zu
                     card.className = `event-card ${colors[index % colors.length]}`;
-
-                    // Formatiere Datum und Uhrzeit für eine schöne Anzeige
                     const startDate = new Date(event.start.dateTime || event.start.date);
-                    
-                    const dateString = startDate.toLocaleDateString('de-DE', { 
-                        weekday: 'long', month: 'long', day: 'numeric' 
-                    });
-                    
-                    const timeString = event.start.dateTime 
-                        ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr'
-                        : 'Ganztägig';
+                    const dateString = startDate.toLocaleDateString('de-DE', { weekday: 'long', month: 'long', day: 'numeric' });
+                    const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
 
-                    // Fülle die Karte mit den Termininformationen
+                    // HIER WIRD DER KALENDERNAME EINGEFÜGT
                     card.innerHTML = `
                         <div>
                             <h2>${event.summary || '(Kein Titel)'}</h2>
+                            <p class="calendar-source">${event.calendarName}</p>
                         </div>
                         <div class="event-details">
                             <div class="date">${dateString}</div>
                             <div class="time">${timeString}</div>
                         </div>
                     `;
-                    
                     dashboard.appendChild(card);
                 });
-
             } catch (error) {
-                // Zeige eine Fehlermeldung an, wenn etwas schiefgeht
                 dashboard.innerHTML = `<h2>Fehler beim Laden der Termine</h2><p>${error.message}</p>`;
                 console.error('Detailierter Fehler:', error);
             }
         }
 
-        // Führe die Funktion aus, wenn die Seite geladen ist
-        fetchAndDisplayEvents();
+        // --- Robuste Fullscreen-Funktionalität ---
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const docElement = document.documentElement;
 
-        // Richte eine automatische Aktualisierung alle 60 Sekunden (60000 Millisekunden) ein
+        function enterFullscreen(element) {
+            if (element.requestFullscreen) { element.requestFullscreen(); } 
+            else if (element.mozRequestFullScreen) { element.mozRequestFullScreen(); } 
+            else if (element.webkitRequestFullscreen) { element.webkitRequestFullscreen(); } 
+            else if (element.msRequestFullscreen) { element.msRequestFullscreen(); }
+        }
+
+        function exitFullscreen() {
+            if (document.exitFullscreen) { document.exitFullscreen(); } 
+            else if (document.mozCancelFullScreen) { document.mozCancelFullScreen(); } 
+            else if (document.webkitExitFullscreen) { document.webkitExitFullscreen(); }
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement;
+            if (!isFullscreen) { enterFullscreen(docElement); } 
+            else { exitFullscreen(); }
+        });
+
+        // Funktion beim Start ausführen und dann alle 60 Sekunden wiederholen
+        fetchAndDisplayEvents();
         setInterval(fetchAndDisplayEvents, 60000);
     </script>
 </body>
