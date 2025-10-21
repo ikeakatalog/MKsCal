@@ -1,0 +1,136 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Combined Calendars</title>
+    <style>
+        /* Make the page take up the full screen with no margins */
+        html, body {
+            margin: 0;
+            padding: 0;
+            width: 100%;
+            height: 100%;
+            overflow: hidden; /* Hide any potential scrollbars */
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+            background-color: #ffffff;
+            display: flex;
+            flex-direction: column; /* Arrange items vertically */
+        }
+        /* A small bar at the top to hold the button */
+        .controls {
+            padding: 8px;
+            background-color: #f0f0f0;
+            text-align: right; /* Position button to the right */
+            border-bottom: 1px solid #ddd;
+        }
+        #fullscreen-btn {
+            font-size: 14px;
+            padding: 8px 16px;
+            cursor: pointer;
+        }
+        /* The container for the calendar will grow to fill all remaining space */
+        .calendar-container {
+            flex-grow: 1;
+            width: 100%;
+        }
+        iframe {
+            border: none;
+            width: 100%;
+            height: 100%;
+        }
+    </style>
+</head>
+<body>
+
+    <div class="controls">
+        <button id="fullscreen-btn">Toggle Fullscreen</button>
+    </div>
+
+    <div class="calendar-container">
+        <iframe src="https://calendar.google.com/calendar/embed?height=600&wkst=1&bgcolor=%23ffffff&ctz=Europe%2FBerlin&showTitle=0&showNav=1&showPrint=0&showTabs=1&showCalendars=1&showTz=0&src=ZzZuZDlmb2R2cGJuYzhjNTFkNTkxYWhkbGdAZ3JvdXAuY2FsZW5kYXIuZ29vZ2xlLmNvbQ&src=NjllNWZjZDNiZjkzMzQ4ZGEwNjJiZjg4ZDkxNTA2MmU3OGMzZjlmMzc3NTI5NmI5NjIwYTA2OTJkNWUxYTI1YUBncm91cC5jYWxlbmRhci5nb29nbGUuY29t&color=%237986CB&color=%23E67C73" ></iframe>
+    </div>
+
+    <script>
+        // --- 1. MORE ROBUST FULLSCREEN FUNCTIONALITY ---
+        const fullscreenBtn = document.getElementById('fullscreen-btn');
+        const docElement = document.documentElement;
+
+        /* A function that checks for all browser-specific versions of the API */
+        function enterFullscreen(element) {
+            if (element.requestFullscreen) {
+                element.requestFullscreen();
+            } else if (element.mozRequestFullScreen) { /* Firefox */
+                element.mozRequestFullScreen();
+            } else if (element.webkitRequestFullscreen) { /* Chrome, Safari & Opera */
+                element.webkitRequestFullscreen();
+            } else if (element.msRequestFullscreen) { /* IE/Edge */
+                element.msRequestFullscreen();
+            }
+        }
+
+        /* A function to exit fullscreen, checking all browser versions */
+        function exitFullscreen() {
+            if (document.exitFullscreen) {
+                document.exitFullscreen();
+            } else if (document.mozCancelFullScreen) {
+                document.mozCancelFullScreen();
+            } else if (document.webkitExitFullscreen) {
+                document.webkitExitFullscreen();
+            } else if (document.msExitFullscreen) {
+                document.msExitFullscreen();
+            }
+        }
+
+        fullscreenBtn.addEventListener('click', () => {
+            // Check all browser-specific properties to see if we are already in fullscreen
+            const isFullscreen = document.fullscreenElement || document.webkitFullscreenElement || document.mozFullScreenElement || document.msFullscreenElement;
+            
+            if (!isFullscreen) {
+                enterFullscreen(docElement);
+            } else {
+                exitFullscreen();
+            }
+        });
+
+
+        // --- 2. SCREEN WAKE LOCK FUNCTIONALITY (Keeps screen on) ---
+        let wakeLock = null;
+
+        const requestWakeLock = async () => {
+            // Check if the Wake Lock API is supported by the browser
+            if ('wakeLock' in navigator) {
+                try {
+                    wakeLock = await navigator.wakeLock.request('screen');
+                    console.log('Screen Wake Lock is active.');
+                    wakeLock.addEventListener('release', () => {
+                        console.log('Screen Wake Lock was released.');
+                        wakeLock = null;
+                    });
+                } catch (err) {
+                    // This can happen if the document is not visible, etc.
+                    console.error(`${err.name}, ${err.message}`);
+                }
+            } else {
+                console.log('Wake Lock API is not supported by this browser.');
+                alert('This browser does not support the "keep screen on" feature.');
+            }
+        };
+
+        // For security, the browser requires a user action (like a click)
+        // to activate the wake lock. We can tie it to the first time the user
+        // clicks the fullscreen button or anywhere on the page.
+        document.body.addEventListener('click', requestWakeLock, { once: true });
+        
+        // Also, try to re-acquire the lock if the user tabs away and comes back.
+        document.addEventListener('visibilitychange', () => {
+            if (wakeLock === null && document.visibilityState === 'visible') {
+                requestWakeLock();
+            }
+        });
+    </script>
+
+</body>
+</html>
