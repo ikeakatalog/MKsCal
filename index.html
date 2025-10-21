@@ -6,13 +6,14 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <title>Dashboard</title>
     <style>
-        /* ... (Das gesamte CSS bleibt exakt gleich wie in der letzten Version) ... */
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap');
         :root { --color-bg: #111827; --color-text-dark: #1f2937; --color-text-light: #f9fafb; }
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         #transit-widget { padding: 16px 24px; background-color: #1f2937; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151; }
-        #transit-widget h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
+        .transit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
+        .transit-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
+        #nearby-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #4b5563; background-color: #374151; color: var(--color-text-light); cursor: pointer; }
         #departures-list { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
         .departure { background-color: #374151; padding: 8px 12px; border-radius: 8px; text-align: center; min-width: 90px; }
         .departure .line { font-weight: 900; font-size: 20px; }
@@ -33,8 +34,11 @@
 </head>
 <body>
     <div id="transit-widget">
-        <h3 id="station-name">ÖPNV-Abfahrten</h3>
-        <div id="departures-list"><p id="departures-status">Standort wird ermittelt...</p></div>
+        <div class="transit-header">
+            <h3 id="station-name">Lade Abfahrten...</h3>
+            <button id="nearby-btn">In der Nähe</button>
+        </div>
+        <div id="departures-list"></div>
     </div>
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
     <script>
@@ -42,59 +46,22 @@
         const calendarDashboard = document.getElementById('calendar-dashboard');
         const departuresList = document.getElementById('departures-list');
         const stationNameElement = document.getElementById('station-name');
-        const departuresStatus = document.getElementById('departures-status');
+        const nearbyBtn = document.getElementById('nearby-btn');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function initializeTransitWidget() {
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(locationSuccess, locationError, {
-                    enableHighAccuracy: true,
-                    timeout: 10000, // 10 Sekunden Timeout
-                    maximumAge: 0
-                });
-            } else {
-                departuresStatus.textContent = "Standort-API nicht verfügbar.";
-            }
-        }
-
-        function locationSuccess(position) {
-            const { latitude, longitude } = position.coords;
-            departuresStatus.textContent = "Lade Abfahrten...";
-            fetchTransitData(latitude, longitude);
-        }
-        
-        // VERBESSERTE FEHLERMELDUNG
-        function locationError(error) {
-            switch(error.code) {
-                case error.PERMISSION_DENIED:
-                    departuresStatus.textContent = "Standort-Zugriff wurde verweigert.";
-                    break;
-                case error.POSITION_UNAVAILABLE:
-                    departuresStatus.textContent = "Standort nicht verfügbar. (Desktop?)";
-                    break;
-                case error.TIMEOUT:
-                    departuresStatus.textContent = "Standort-Abfrage dauerte zu lange.";
-                    break;
-                default:
-                    departuresStatus.textContent = "Unbekannter Standort-Fehler.";
-                    break;
-            }
-        }
-        
-        async function fetchTransitData(latitude, longitude) {
+        async function fetchTransitData(latitude = null, longitude = null) {
+            let url = CLOUDFLARE_WORKER_URL + 'transit';
+            if (latitude && longitude) { url += `?lat=${latitude}&lon=${longitude}`; }
             try {
-                const response = await fetch(`${CLOUDFLARE_WORKER_URL}transit?lat=${latitude}&lon=${longitude}`);
+                const response = await fetch(url);
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const data = await response.json();
-                
-                stationNameElement.textContent = `Abfahrten: ${data.stationName}`;
+                stationNameElement.textContent = data.stationName || 'Fehler';
                 departuresList.innerHTML = '';
-                
                 if (!data.departures || data.departures.length === 0) {
                     departuresList.innerHTML = '<p>Keine Abfahrten gefunden.</p>';
                     return;
                 }
-
                 data.departures.slice(0, 10).forEach(dep => {
                     const depElement = document.createElement('div');
                     depElement.className = 'departure';
@@ -102,67 +69,47 @@
                     depElement.innerHTML = `<div class="line">${dep.line}</div><div class="time">${dep.when}</div>${delayText}<div class="direction">${dep.direction}</div>`;
                     departuresList.appendChild(depElement);
                 });
-            } catch (error) {
-                departuresList.innerHTML = '<p>Fehler beim Laden der Abfahrten.</p>';
-            }
+            } catch (error) { stationNameElement.textContent = 'Fehler beim Laden'; }
         }
-        
+        nearbyBtn.addEventListener('click', () => {
+            stationNameElement.textContent = 'Standort wird ermittelt...';
+            departuresList.innerHTML = '';
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => fetchTransitData(position.coords.latitude, position.coords.longitude),
+                    () => { stationNameElement.textContent = 'Standort-Fehler'; }
+                );
+            } else { stationNameElement.textContent = 'Standort-API nicht verfügbar.'; }
+        });
         async function fetchAndDisplayEvents() {
             try {
                 const response = await fetch(CLOUDFLARE_WORKER_URL);
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const events = await response.json();
-                calendarDashboard.innerHTML = '';
-                const eventsByDate = {};
-                events.forEach(event => {
-                    const eventDate = new Date(event.start.dateTime || event.start.date);
-                    const dateKey = eventDate.toISOString().split('T')[0];
-                    if (!eventsByDate[dateKey]) { eventsByDate[dateKey] = []; }
-                    eventsByDate[dateKey].push(event);
-                });
+                calendarDashboard.innerHTML = ''; const eventsByDate = {};
+                events.forEach(event => { const eventDate = new Date(event.start.dateTime || event.start.date); const dateKey = eventDate.toISOString().split('T')[0]; if (!eventsByDate[dateKey]) { eventsByDate[dateKey] = []; } eventsByDate[dateKey].push(event); });
                 const today = new Date();
                 for (let i = 0; i < 30; i++) {
-                    const currentDay = new Date();
-                    currentDay.setDate(today.getDate() + i);
-                    const dateKey = currentDay.toISOString().split('T')[0];
+                    const currentDay = new Date(); currentDay.setDate(today.getDate() + i); const dateKey = currentDay.toISOString().split('T')[0];
                     if (eventsByDate[dateKey]) {
                         eventsByDate[dateKey].forEach(event => {
-                            const card = document.createElement('div');
-                            card.className = 'event-card';
-                            const bgColor = colorMap[event.calendarName] || colorMap['default'];
-                            card.style.backgroundColor = bgColor;
-                            const textColor = getContrastColor(bgColor);
-                            card.style.color = textColor;
-                            const startDate = new Date(event.start.dateTime || event.start.date);
-                            const dateStringShort = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
-                            const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
+                            const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date); const dateStringShort = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
                             card.innerHTML = `<div class="content"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="event-details"><div class="date">${dateStringShort}</div><div class="time">${timeString}</div></div>`;
                             calendarDashboard.appendChild(card);
                         });
-                    } else {
-                        const emptyCard = document.createElement('div');
-                        emptyCard.className = 'empty-day-card';
-                        emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
-                        calendarDashboard.appendChild(emptyCard);
-                    }
+                    } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); }
                 }
-            } catch (error) {
-                calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`;
-            }
+            } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; }
         }
-        function getContrastColor(hexColor) {
-            if (!hexColor) return '#1f2937';
-            const r = parseInt(hexColor.substr(1, 2), 16);
-            const g = parseInt(hexColor.substr(3, 2), 16);
-            const b = parseInt(hexColor.substr(5, 2), 16);
-            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
-            return luminance > 0.6 ? '#1f2937' : '#f9fafb';
-        }
-        
+        function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
         fetchAndDisplayEvents();
-        initializeTransitWidget();
+        fetchTransitData();
         setInterval(fetchAndDisplayEvents, 60000);
-        setInterval(initializeTransitWidget, 30000); // ÖPNV alle 30 Sekunden aktualisieren für mehr Genauigkeit
+        setInterval(() => {
+            if (stationNameElement.textContent.includes('Nähe') || stationNameElement.textContent.includes('Standort')) {
+                // Nur wenn aktiv eine Standortsuche läuft, diese wiederholen
+            } else { fetchTransitData(); }
+        }, 30000);
     </script>
 </body>
 </html>
