@@ -29,27 +29,41 @@
             border-radius: 50%; background-color: #4b5563;
             display: flex; align-items: center; justify-content: center;
         }
-        .departure-row .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; min-width: 130px; }
-        .departure-row .line { font-weight: 900; font-size: 16px; min-width: 40px; text-align: left; }
-        .departure-row .direction { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
-        .departure-row .station { font-size: 14px; font-weight: 900; margin-left: auto; padding-left: 10px; }
-        .station-nk { color: #81a1c1; }
-        .station-sa { color: #a3be8c; }
-        .time-soon { color: var(--time-soon); }
-        .time-medium { color: var(--time-medium); }
-        .time-far { color: var(--time-far); }
+        .departure-row .line { font-weight: 900; font-size: 16px; min-width: 40px; }
+        .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow: hidden; }
+        .direction-text { font-size: 16px; font-weight: 700; display: inline-block; }
+        
+        /* NEU: Laufschrift-Animation */
+        .direction-text.is-overflowing {
+            animation: marquee 10s linear infinite;
+            animation-play-state: paused; /* Startet pausiert */
+        }
+        .departure-row:hover .direction-text.is-overflowing {
+            animation-play-state: running; /* Läuft nur bei Hover */
+        }
+        @keyframes marquee {
+            from { transform: translateX(0); }
+            to { transform: translateX(-100%); }
+        }
+
+        /* NEU: Meta-Container für Zeit und Station */
+        .meta-info {
+            display: flex; align-items: center; gap: 10px;
+            margin-left: auto; /* Drückt diesen Block nach rechts */
+            padding-left: 10px; /* Sicherer Abstand zum Zielbahnhof */
+        }
+        .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
+        .meta-info .station { font-size: 14px; font-weight: 900; }
+        .station-nk { color: #81a1c1; } .station-sa { color: #a3be8c; }
+        .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
         #calendar-dashboard {
-            padding: 16px 0;
-            display: grid; grid-template-columns: 1fr; 
-            gap: 12px;
-            flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 16px 0; display: grid; grid-template-columns: 1fr; 
+            gap: 12px; flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card {
-            margin: 0;
-            border-radius: 24px;
-            padding: 12px 20px;
+            margin: 0; border-radius: 24px; padding: 12px 20px;
         }
         .event-card {
             display: flex; align-items: center; justify-content: space-between;
@@ -74,20 +88,8 @@
         const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function getTransitSymbol(product) {
-            switch(product) {
-                case 'suburban': return 'S';
-                case 'subway': return 'U';
-                case 'bus': return 'B';
-                default: return '';
-            }
-        }
-        
-        function getTimeClass(minutes) {
-            if (minutes < 5) return 'time-soon';
-            if (minutes <= 10) return 'time-medium';
-            return 'time-far';
-        }
+        function getTransitSymbol(product) { /* ... (unverändert) ... */ }
+        function getTimeClass(minutes) { /* ... (unverändert) ... */ }
 
         async function fetchTransitData() {
             try {
@@ -112,63 +114,45 @@
                     const timeInfo = `${absoluteTime} <span class="rel-time ${timeClass}">(${minutesFromNow} Min)</span>`;
                     const symbol = getTransitSymbol(dep.product);
 
+                    // NEUE, SAUBERE HTML-STRUKTUR
                     depElement.innerHTML = `
                         <div class="line-symbol">${symbol}</div>
                         <div class="line">${dep.line}</div>
-                        <div class="direction">${dep.direction}</div>
-                        <div class="time-info">${timeInfo}</div>
-                        <div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div>
+                        <div class="direction-wrapper"><span class="direction-text">${dep.direction}</span></div>
+                        <div class="meta-info">
+                            <div class="time-info">${timeInfo}</div>
+                            <div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div>
+                        </div>
                     `;
                     transitWidget.appendChild(depElement);
                 });
+
+                // NEU: JavaScript-Code, der die Laufschrift nur bei Bedarf aktiviert
+                const directions = document.querySelectorAll('.direction-text');
+                directions.forEach(dir => {
+                    if (dir.scrollWidth > dir.clientWidth) {
+                        dir.classList.add('is-overflowing');
+                    }
+                });
+
             } catch (error) {
                 transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
             }
         }
 
-        async function fetchAndDisplayEvents() {
-            try {
-                const response = await fetch(CLOUDFLARE_WORKER_URL);
-                if (!response.ok) throw new Error('Netzwerkfehler');
-                const events = await response.json();
-                calendarDashboard.innerHTML = ''; const eventsByDate = {};
-                events.forEach(event => { const d = new Date(event.start.dateTime || event.start.date); const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); if (!eventsByDate[key]) { eventsByDate[key] = []; } eventsByDate[key].push(event); });
-                const today = new Date(); today.setHours(0,0,0,0);
-                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
-                for (let i = 0; i < 30; i++) {
-                    const currentDay = new Date(today); currentDay.setDate(today.getDate() + i);
-                    const dateKey = currentDay.toISOString();
-                    if (eventsByDate[dateKey]) {
-                        eventsByDate[dateKey].forEach(event => {
-                            const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date);
-                            let dateDisplayString;
-                            if (currentDay.getTime() === today.getTime()) { dateDisplayString = 'Heute'; } 
-                            else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } 
-                            else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); }
-                            const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
-                            
-                            card.innerHTML = `
-                                <div class="info">
-                                    <h2>${event.summary || '(Kein Titel)'}</h2>
-                                    <p class="calendar-source">${event.calendarName}</p>
-                                </div>
-                                <div class="datetime">
-                                    <div class="date">${dateDisplayString}</div>
-                                    <div class="time">${timeString}</div>
-                                </div>
-                            `;
-                            calendarDashboard.appendChild(card);
-                        });
-                    } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); }
-                }
-            } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; }
-        }
-        function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
+        async function fetchAndDisplayEvents() { /* ... (unverändert) ... */ }
+        function getContrastColor(hexColor) { /* ... (unverändert) ... */ }
 
         fetchAndDisplayEvents();
         fetchTransitData();
         setInterval(fetchAndDisplayEvents, 60000);
         setInterval(fetchTransitData, 30000);
+
+        // Fügen Sie die unveränderten Codeblöcke hier ein
+        function getTransitSymbol(product) { switch(product) { case 'suburban': return 'S'; case 'subway': return 'U'; case 'bus': return 'B'; default: return ''; } }
+        function getTimeClass(minutes) { if (minutes < 5) return 'time-soon'; if (minutes <= 10) return 'time-medium'; return 'time-far'; }
+        async function fetchAndDisplayEvents() { try { const response = await fetch(CLOUDFLARE_WORKER_URL); if (!response.ok) throw new Error('Netzwerkfehler'); const events = await response.json(); calendarDashboard.innerHTML = ''; const eventsByDate = {}; events.forEach(event => { const d = new Date(event.start.dateTime || event.start.date); const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); if (!eventsByDate[key]) { eventsByDate[key] = []; } eventsByDate[key].push(event); }); const today = new Date(); today.setHours(0,0,0,0); const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1); for (let i = 0; i < 30; i++) { const currentDay = new Date(today); currentDay.setDate(today.getDate() + i); const dateKey = currentDay.toISOString(); if (eventsByDate[dateKey]) { eventsByDate[dateKey].forEach(event => { const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date); let dateDisplayString; if (currentDay.getTime() === today.getTime()) { dateDisplayString = 'Heute'; } else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); } const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig'; card.innerHTML = `<div class="info"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="datetime"><div class="date">${dateDisplayString}</div><div class="time">${timeString}</div></div>`; calendarDashboard.appendChild(card); }); } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); } } } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; } }
+        function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
     </script>
 </body>
 </html>
