@@ -11,52 +11,50 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         
-        /* --- NEUES ÖPNV-WIDGET-STYLING --- */
         #transit-widget {
             padding: 12px 16px; background-color: #1f2937; flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
-            max-height: 150px; /* Begrenzt die Höhe des Widgets */
-            overflow-y: auto; /* Erlaubt Scrollen, falls mehr Abfahrten da sind */
-            -webkit-overflow-scrolling: touch;
+            max-height: 200px; /* ETWAS HÖHER FÜR MEHR EINTRÄGE */
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .departure-row {
-            display: flex; align-items: center; gap: 10px;
-            font-size: 14px; padding: 4px 0;
+            display: flex; align-items: center; gap: 8px; font-size: 14px; padding: 5px 0;
         }
-        .departure-row .time-info { white-space: nowrap; font-weight: 700; }
+        .line-icon { display: flex; align-items: center; justify-content: center; min-width: 24px; }
+        .line-icon svg { width: 18px; height: 18px; }
+        .departure-row .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
         .departure-row .line { font-weight: 900; font-size: 16px; min-width: 40px; text-align: left; }
-        .departure-row .direction { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-        .departure-row .station { font-size: 12px; font-weight: 700; color: #9ca3af; margin-left: auto; padding-left: 10px; }
+        .departure-row .direction { font-size: 16px; font-weight: 700; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; flex-grow: 1; }
+        .departure-row .station { font-size: 14px; font-weight: 900; margin-left: auto; padding-left: 10px; }
+        .station-nk { color: #81a1c1; } /* DESATURIERTES BLAU */
+        .station-sa { color: #a3be8c; } /* DESATURIERTES GRÜN */
         .delay { color: #fecaca; font-size: 12px; }
 
-        /* --- NEUES KALENDER-STYLING --- */
         #calendar-dashboard {
-            padding: 16px 12px; /* Oben/unten Padding, seitlich etwas Platz */
-            display: grid; grid-template-columns: 1fr; 
-            gap: 12px; /* Abstand zwischen den separaten Karten */
+            padding: 16px 0; /* KEIN SEITLICHES PADDING MEHR */
+            display: grid; grid-template-columns: 1fr; gap: 12px;
             flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card {
-            padding: 12px 16px; /* SCHMALER */
-            border-radius: 24px; /* STARK ABRUNDEN */
-            display: flex; flex-direction: column;
+            margin: 0; /* KEIN SEITLICHER ABSTAND MEHR */
+            border-radius: 24px;
+            padding: 12px 20px; /* SCHMALER */
         }
-        .event-card { color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
-        .event-card .content { flex-grow: 1; }
-        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; } /* SCHMALER */
-        .calendar-source { font-size: 11px; margin: 6px 0 0 0; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
-        .event-details { text-align: right; margin-top: 8px; } /* SCHMALER */
+        .event-card {
+            display: flex; align-items: center; justify-content: space-between; /* ZWEISPALTIGES LAYOUT */
+            color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+        }
+        .event-card .info { text-align: left; }
+        .event-card .datetime { text-align: right; }
+        .event-card h2 { margin: 0; font-size: 18px; line-height: 1.2; }
+        .calendar-source { font-size: 11px; margin-top: 6px; padding: 3px 6px; border-radius: 6px; background-color: rgba(0,0,0,0.1); display: inline-block; }
         .event-details .time { font-size: 14px; font-weight: 400; }
         .event-details .date { font-size: 20px; font-weight: 900; }
         .empty-day-card { background-color: #1f2937; color: #9ca3af; text-align: center; font-weight: 700; font-size: 14px; padding: 8px; }
     </style>
 </head>
 <body>
-    
-    <div id="transit-widget">
-        <!-- Der Inhalt wird komplett von JavaScript generiert -->
-    </div>
-    
+    <div id="transit-widget"></div>
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
     <script>
@@ -65,6 +63,20 @@
         const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
+        // NEU: Helfer-Funktion für die Icons
+        function getTransitIcon(product) {
+            switch(product) {
+                case 'suburban': // S-Bahn
+                    return `<svg viewBox="0 0 512 512" fill="#008000"><path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zM128 384c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zm192 0c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zm88-160H104c-13.3 0-24-10.7-24-24V128c0-13.3 10.7-24 24-24h304c13.3 0 24 10.7 24 24v72c0 13.3-10.7 24-24 24z"/></svg>`;
+                case 'subway': // U-Bahn
+                    return `<svg viewBox="0 0 512 512" fill="#000080"><path d="M256 0C114.6 0 0 114.6 0 256s114.6 256 256 256 256-114.6 256-256S397.4 0 256 0zM128 384c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zm192 0c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zm88-160H104c-13.3 0-24-10.7-24-24V128c0-13.3 10.7-24 24-24h304c13.3 0 24 10.7 24 24v72c0 13.3-10.7 24-24 24z"/></svg>`;
+                case 'bus':
+                    return `<svg viewBox="0 0 512 512" fill="#800080"><path d="M128 384c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zm256 0c-17.7 0-32-14.3-32-32s14.3-32 32-32 32 14.3 32 32-14.3 32-32 32zM80 128c0-17.7 14.3-32 32-32h288c17.7 0 32 14.3 32 32v128H80V128zm0 160h352v-32H80v32z"/></svg>`;
+                default:
+                    return ''; // Kein Icon für andere Typen
+            }
+        }
+        
         async function fetchTransitData() {
             try {
                 const response = await fetch(CLOUDFLARE_WORKER_URL + 'transit');
@@ -75,7 +87,7 @@
                 if (!departures || departures.length === 0) {
                     transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Keine Abfahrten gefunden.</p>'; return;
                 }
-                departures.slice(0, 5).forEach(dep => { // Zeige die nächsten 5 Abfahrten
+                departures.slice(0, 10).forEach(dep => { // Zeige die nächsten 10
                     const depElement = document.createElement('div');
                     depElement.className = 'departure-row';
                     
@@ -87,10 +99,11 @@
                     const delayText = dep.delay > 0 ? ` <span class="delay">+${dep.delay}</span>` : '';
 
                     depElement.innerHTML = `
+                        <div class="line-icon">${getTransitIcon(dep.product)}</div>
                         <div class="line">${dep.line}</div>
                         <div class="time-info">${timeInfo}${delayText}</div>
                         <div class="direction">nach ${dep.direction}</div>
-                        <div class="station">(${dep.station})</div>
+                        <div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div>
                     `;
                     transitWidget.appendChild(depElement);
                 });
@@ -119,7 +132,18 @@
                             else if (currentDay.getTime() === tomorrow.getTime()) { dateDisplayString = 'Morgen'; } 
                             else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); }
                             const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
-                            card.innerHTML = `<div class="content"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="event-details"><div class="date">${dateDisplayString}</div><div class="time">${timeString}</div></div>`;
+                            
+                            // NEUES KARTEN-LAYOUT
+                            card.innerHTML = `
+                                <div class="info">
+                                    <h2>${event.summary || '(Kein Titel)'}</h2>
+                                    <p class="calendar-source">${event.calendarName}</p>
+                                </div>
+                                <div class="datetime">
+                                    <div class="date">${dateDisplayString}</div>
+                                    <div class="time">${timeString}</div>
+                                </div>
+                            `;
                             calendarDashboard.appendChild(card);
                         });
                     } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); }
