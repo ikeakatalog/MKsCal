@@ -1,0 +1,10 @@
+{
+  "name": "mks-calendar-function",
+  "version": "1.0.0",
+  "dependencies": {
+    "googleapis": "^109.0.1"
+  },
+  "engines": {
+    "node": "18"
+  }
+}
