@@ -10,11 +10,12 @@
         :root { --color-bg: #111827; --color-text-dark: #1f2937; --color-text-light: #f9fafb; }
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
-        #transit-widget { padding: 16px 24px; background-color: #1f2937; flex-shrink: 0; box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151; }
-        .transit-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 12px; }
-        .transit-header h3 { margin: 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
-        #nearby-btn { font-size: 12px; padding: 4px 10px; border-radius: 6px; border: 1px solid #4b5563; background-color: #374151; color: var(--color-text-light); cursor: pointer; }
-        #departures-list { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
+        .transit-widget {
+            padding: 16px 24px; background-color: #1f2937; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
+        }
+        .transit-widget h3 { margin: 0 0 12px 0; font-size: 16px; font-weight: 700; color: #d1d5db; }
+        .departures-list { display: flex; gap: 16px; overflow-x: auto; padding-bottom: 10px; -webkit-overflow-scrolling: touch; }
         .departure { background-color: #374151; padding: 8px 12px; border-radius: 8px; text-align: center; min-width: 90px; }
         .departure .line { font-weight: 900; font-size: 20px; }
         .departure .time { font-size: 18px; font-weight: 700; color: #f9fafb; }
@@ -33,54 +34,49 @@
     </style>
 </head>
 <body>
-    <div id="transit-widget">
-        <div class="transit-header">
-            <h3 id="station-name">Lade Abfahrten...</h3>
-            <button id="nearby-btn">In der Nähe</button>
-        </div>
-        <div id="departures-list"></div>
+    
+    <div id="transit-widget-neukoelln" class="transit-widget">
+        <h3>Abfahrten S+U Neukölln</h3>
+        <div id="departures-neukoelln" class="departures-list"><p>Lade Abfahrten...</p></div>
     </div>
+    
+    <div id="transit-widget-zeitzer" class="transit-widget">
+        <h3>Abfahrten Zeitzer Str.</h3>
+        <div id="departures-zeitzer" class="departures-list"><p>Lade Abfahrten...</p></div>
+    </div>
+
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
+
     <script>
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
-        const departuresList = document.getElementById('departures-list');
-        const stationNameElement = document.getElementById('station-name');
-        const nearbyBtn = document.getElementById('nearby-btn');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        async function fetchTransitData(latitude = null, longitude = null) {
-            let url = CLOUDFLARE_WORKER_URL + 'transit';
-            if (latitude && longitude) { url += `?lat=${latitude}&lon=${longitude}`; }
+        // Funktion ist jetzt wiederverwendbar für jede Station
+        async function fetchTransitData(stationId, listElementId) {
+            const listElement = document.getElementById(listElementId);
             try {
-                const response = await fetch(url);
+                const response = await fetch(`${CLOUDFLARE_WORKER_URL}transit?id=${stationId}`);
                 if (!response.ok) throw new Error('Netzwerkfehler');
-                const data = await response.json();
-                stationNameElement.textContent = data.stationName || 'Fehler';
-                departuresList.innerHTML = '';
-                if (!data.departures || data.departures.length === 0) {
-                    departuresList.innerHTML = '<p>Keine Abfahrten gefunden.</p>';
+                const departures = await response.json();
+                
+                listElement.innerHTML = '';
+                if (!departures || departures.length === 0) {
+                    listElement.innerHTML = '<p>Keine Abfahrten gefunden.</p>';
                     return;
                 }
-                data.departures.slice(0, 10).forEach(dep => {
+                departures.slice(0, 10).forEach(dep => {
                     const depElement = document.createElement('div');
                     depElement.className = 'departure';
                     const delayText = dep.delay > 0 ? `<div class="delay">+${dep.delay} min</div>` : '';
                     depElement.innerHTML = `<div class="line">${dep.line}</div><div class="time">${dep.when}</div>${delayText}<div class="direction">${dep.direction}</div>`;
-                    departuresList.appendChild(depElement);
+                    listElement.appendChild(depElement);
                 });
-            } catch (error) { stationNameElement.textContent = 'Fehler beim Laden'; }
+            } catch (error) {
+                listElement.innerHTML = '<p>Fehler beim Laden.</p>';
+            }
         }
-        nearbyBtn.addEventListener('click', () => {
-            stationNameElement.textContent = 'Standort wird ermittelt...';
-            departuresList.innerHTML = '';
-            if (navigator.geolocation) {
-                navigator.geolocation.getCurrentPosition(
-                    (position) => fetchTransitData(position.coords.latitude, position.coords.longitude),
-                    () => { stationNameElement.textContent = 'Standort-Fehler'; }
-                );
-            } else { stationNameElement.textContent = 'Standort-API nicht verfügbar.'; }
-        });
+
         async function fetchAndDisplayEvents() {
             try {
                 const response = await fetch(CLOUDFLARE_WORKER_URL);
@@ -102,14 +98,17 @@
             } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; }
         }
         function getContrastColor(hexColor) { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
+
+        // --- START- UND REFRESH-LOGIK ---
         fetchAndDisplayEvents();
-        fetchTransitData();
+        fetchTransitData('900078201', 'departures-neukoelln'); // Holt Daten für Neukölln
+        fetchTransitData('900019404', 'departures-zeitzer');   // Holt Daten für Zeitzer Str.
+
         setInterval(fetchAndDisplayEvents, 60000);
         setInterval(() => {
-            if (stationNameElement.textContent.includes('Nähe') || stationNameElement.textContent.includes('Standort')) {
-                // Nur wenn aktiv eine Standortsuche läuft, diese wiederholen
-            } else { fetchTransitData(); }
-        }, 30000);
+            fetchTransitData('900078201', 'departures-neukoelln');
+            fetchTransitData('900019404', 'departures-zeitzer');
+        }, 30000); // Aktualisiert beide Stationen alle 30 Sekunden
     </script>
 </body>
 </html>
