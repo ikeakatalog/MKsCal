@@ -14,14 +14,13 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         
-        /* --- KORRIGIERTES ÖPNV-DESIGN --- */
         #transit-widget {
             padding: 12px 16px; 
             background-color: #1f2937; 
             flex-shrink: 0;
             box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
             border-bottom: 1px solid #374151;
-            max-height: 175px; /* HÖHE DER SEKTION UM CA. 30% REDUZIERT (250px * 0.7) */
+            max-height: 175px;
             overflow-y: auto; 
             -webkit-overflow-scrolling: touch;
         }
@@ -31,8 +30,6 @@
             border-bottom: 1px solid #374151;
         }
         .departure-row:last-child { border-bottom: none; }
-        
-        /* INHALT WIEDER AUF URSPRÜNGLICHE GRÖSSE GESETZT */
         .line-symbol {
             font-weight: 900; font-size: 16px; min-width: 24px; height: 24px;
             border-radius: 50%; background-color: #4b5563;
@@ -52,7 +49,6 @@
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        /* Kalender-Layout (unverändert) */
         #calendar-dashboard {
             padding: 5px 0px; display: grid; grid-template-columns: 1fr; 
             gap: 1px; flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
@@ -105,7 +101,9 @@
                 if (!departures || departures.length === 0) {
                     transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Keine Abfahrten gefunden.</p>'; return;
                 }
-                departures.slice(0, 30).forEach(dep => {
+                
+                // HIER IST DIE ÄNDERUNG: Das .slice(0, 30) wurde entfernt.
+                departures.forEach(dep => {
                     const depElement = document.createElement('div');
                     depElement.className = 'departure-row';
                     
