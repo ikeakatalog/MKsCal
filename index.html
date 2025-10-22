@@ -14,37 +14,43 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         
-        /* --- NEUES, KOMPAKTERES ÖPNV-DESIGN --- */
+        /* --- KORRIGIERTES ÖPNV-DESIGN --- */
         #transit-widget {
-            padding: 8px 12px; /* Weniger Padding */
-            background-color: #1f2937; flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
-            max-height: 200px; /* Etwas niedriger */
-            overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 12px 16px; 
+            background-color: #1f2937; 
+            flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+            border-bottom: 1px solid #374151;
+            max-height: 175px; /* HÖHE DER SEKTION UM CA. 30% REDUZIERT (250px * 0.7) */
+            overflow-y: auto; 
+            -webkit-overflow-scrolling: touch;
         }
         .departure-row {
-            display: flex; align-items: center; gap: 8px; /* Weniger Abstand */
-            font-size: 12px; padding: 4px 0; /* Kompakter */
+            display: flex; align-items: center; gap: 10px; 
+            font-size: 14px; padding: 6px 0;
             border-bottom: 1px solid #374151;
         }
         .departure-row:last-child { border-bottom: none; }
+        
+        /* INHALT WIEDER AUF URSPRÜNGLICHE GRÖSSE GESETZT */
         .line-symbol {
-            font-weight: 700; font-size: 14px; min-width: 20px; height: 20px;
+            font-weight: 900; font-size: 16px; min-width: 24px; height: 24px;
             border-radius: 50%; background-color: #4b5563;
             display: flex; align-items: center; justify-content: center;
         }
-        .line-info { display: flex; align-items: center; gap: 4px; min-width: 40px; }
-        .line-info .platform { font-size: 11px; color: #9ca3af; font-weight: 700; }
+        .line-info { display: flex; align-items: center; gap: 5px; min-width: 45px; }
+        .line-info .platform { font-size: 12px; color: #9ca3af; font-weight: 700; }
         .direction-wrapper { flex-grow: 1; white-space: nowrap; overflow-x: auto; }
         .direction-wrapper::-webkit-scrollbar { display: none; }
         .direction-wrapper { scrollbar-width: none; }
-        .direction-text { font-size: 14px; font-weight: 700; display: inline-block; }
-        .meta-info { display: flex; align-items: center; gap: 8px; margin-left: auto; padding-left: 8px; }
-        .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 13px; }
-        .meta-info .station { font-size: 12px; font-weight: 900; }
+        .direction-text { font-size: 16px; font-weight: 700; display: inline-block; }
+        .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
+        .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
+        .meta-info .station { font-size: 14px; font-weight: 900; }
+        
         .station-nk { color: #81a1c1; } .station-sa { color: #a3be8c; }
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
-        .rel-time { font-size: 11px; font-weight: 400; }
+        .rel-time { font-size: 13px; font-weight: 400; }
         
         /* Kalender-Layout (unverändert) */
         #calendar-dashboard {
@@ -74,8 +80,20 @@
         const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function getTransitSymbol(product) { /* ... (unverändert) ... */ }
-        function getTimeClass(minutes) { /* ... (unverändert) ... */ }
+        function getTransitSymbol(product) {
+            switch(product) {
+                case 'suburban': return 'S';
+                case 'subway': return 'U';
+                case 'bus': return 'B';
+                default: return '';
+            }
+        }
+        
+        function getTimeClass(minutes) {
+            if (minutes < 5) return 'time-soon';
+            if (minutes <= 10) return 'time-medium';
+            return 'time-far';
+        }
 
         async function fetchTransitData() {
             try {
@@ -101,7 +119,6 @@
                     const symbol = getTransitSymbol(dep.product);
                     const platformText = dep.platform ? `<span class="platform">${dep.platform.replace(/Gl\.\s|Pos\.\s/g, '')}</span>` : '';
 
-                    // KORREKTUR: Station nach vorne verschoben
                     depElement.innerHTML = `
                         <div class="station station-${dep.station.toLowerCase()}">(${dep.station})</div>
                         <div class="line-symbol">${symbol}</div>
@@ -122,14 +139,85 @@
             }
         }
 
-        async function fetchAndDisplayEvents() { /* ... (unverändert) ... */ }
-        function getContrastColor(hexColor) { /* ... (unverändert) ... */ }
+        async function fetchAndDisplayEvents() {
+            try {
+                const response = await fetch(CLOUDFLARE_WORKER_URL);
+                if (!response.ok) throw new Error('Netzwerkfehler');
+                const events = await response.json();
+                calendarDashboard.innerHTML = '';
+                const eventsByDate = {};
+                events.forEach(event => {
+                    const d = new Date(event.start.dateTime || event.start.date);
+                    const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+                    if (!eventsByDate[key]) { eventsByDate[key] = []; }
+                    eventsByDate[key].push(event);
+                });
+                
+                const today = new Date(); today.setHours(0, 0, 0, 0);
+                const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1);
+
+                for (let i = 0; i < 30; i++) {
+                    const currentDay = new Date(today);
+                    currentDay.setDate(today.getDate() + i);
+                    const dateKey = currentDay.toISOString();
+                    if (eventsByDate[dateKey]) {
+                        eventsByDate[dateKey].forEach(event => {
+                            const card = document.createElement('div');
+                            card.className = 'event-card';
+                            const bgColor = colorMap[event.calendarName] || colorMap['default'];
+                            card.style.backgroundColor = bgColor;
+                            const textColor = getContrastColor(bgColor);
+                            card.style.color = textColor;
+                            const startDate = new Date(event.start.dateTime || event.start.date);
+                            
+                            const diffTime = currentDay.getTime() - today.getTime();
+                            const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+                            
+                            let dateDisplayString;
+                            let daysUntilString = '';
+                            if (diffDays === 0) { dateDisplayString = 'Heute'; } 
+                            else if (diffDays === 1) { dateDisplayString = 'Morgen'; } 
+                            else {
+                                dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' });
+                                daysUntilString = `<div class="days-until">${diffDays}T</div>`;
+                            }
+                            const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig';
+                            
+                            card.innerHTML = `
+                                <div class="info">
+                                    <h2>${event.summary || '(Kein Titel)'}</h2>
+                                    <p class="calendar-source">${event.calendarName}</p>
+                                </div>
+                                <div class="datetime">
+                                    ${daysUntilString}
+                                    <div class="date-block">
+                                        <div class="date">${dateDisplayString}</div>
+                                        <div class="time">${timeString}</div>
+                                    </div>
+                                </div>
+                            `;
+                            calendarDashboard.appendChild(card);
+                        });
+                    } else {
+                        const emptyCard = document.createElement('div');
+                        emptyCard.className = 'empty-day-card';
+                        emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' });
+                        calendarDashboard.appendChild(emptyCard);
+                    }
+                }
+            } catch (error) {
+                calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`;
+            }
+        }
         
-        // Fügen Sie die unveränderten Funktionen hier ein
-        getTransitSymbol = (product) => { switch(product) { case 'suburban': return 'S'; case 'subway': return 'U'; case 'bus': return 'B'; default: return ''; } }
-        getTimeClass = (minutes) => { if (minutes < 5) return 'time-soon'; if (minutes <= 10) return 'time-medium'; return 'time-far'; }
-        getContrastColor = (hexColor) => { if (!hexColor) return '#1f2937'; const r = parseInt(hexColor.substr(1, 2), 16); const g = parseInt(hexColor.substr(3, 2), 16); const b = parseInt(hexColor.substr(5, 2), 16); const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255; return luminance > 0.6 ? '#1f2937' : '#f9fafb'; }
-        fetchAndDisplayEvents = async () => { try { const response = await fetch(CLOUDFLARE_WORKER_URL); if (!response.ok) throw new Error('Netzwerkfehler'); const events = await response.json(); calendarDashboard.innerHTML = ''; const eventsByDate = {}; events.forEach(event => { const d = new Date(event.start.dateTime || event.start.date); const key = new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString(); if (!eventsByDate[key]) { eventsByDate[key] = []; } eventsByDate[key].push(event); }); const today = new Date(); today.setHours(0,0,0,0); const tomorrow = new Date(today); tomorrow.setDate(today.getDate() + 1); for (let i = 0; i < 30; i++) { const currentDay = new Date(today); currentDay.setDate(today.getDate() + i); const dateKey = currentDay.toISOString(); if (eventsByDate[dateKey]) { eventsByDate[dateKey].forEach(event => { const card = document.createElement('div'); card.className = 'event-card'; const bgColor = colorMap[event.calendarName] || colorMap['default']; card.style.backgroundColor = bgColor; const textColor = getContrastColor(bgColor); card.style.color = textColor; const startDate = new Date(event.start.dateTime || event.start.date); let dateDisplayString; const diffTime = currentDay.getTime() - today.getTime(); const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); if (diffDays === 0) { dateDisplayString = 'Heute'; } else if (diffDays === 1) { dateDisplayString = 'Morgen'; } else { dateDisplayString = startDate.toLocaleDateString('de-DE', { weekday: 'short', day: 'numeric', month: 'numeric' }); } let daysUntilString = ''; if (diffDays > 1) { daysUntilString = `<div class="days-until">${diffDays}T</div>`; } const timeString = event.start.dateTime ? startDate.toLocaleTimeString('de-DE', { hour: '2-digit', minute: '2-digit' }) + ' Uhr' : 'Ganztägig'; card.innerHTML = `<div class="info"><h2>${event.summary || '(Kein Titel)'}</h2><p class="calendar-source">${event.calendarName}</p></div><div class="datetime">${daysUntilString}<div class="date-block"><div class="date">${dateDisplayString}</div><div class="time">${timeString}</div></div></div>`; calendarDashboard.appendChild(card); }); } else { const emptyCard = document.createElement('div'); emptyCard.className = 'empty-day-card'; emptyCard.textContent = currentDay.toLocaleDateString('de-DE', { weekday: 'long', day: 'numeric', month: 'long' }); calendarDashboard.appendChild(emptyCard); } } } catch (error) { calendarDashboard.innerHTML = `<h2>Fehler: Kalenderdaten konnten nicht geladen werden.</h2>`; } }
+        function getContrastColor(hexColor) {
+            if (!hexColor) return '#1f2937';
+            const r = parseInt(hexColor.substr(1, 2), 16);
+            const g = parseInt(hexColor.substr(3, 2), 16);
+            const b = parseInt(hexColor.substr(5, 2), 16);
+            const luminance = (0.299 * r + 0.587 * g + 0.114 * b) / 255;
+            return luminance > 0.6 ? '#1f2937' : '#f9fafb';
+        }
 
         fetchAndDisplayEvents();
         fetchTransitData();
