@@ -14,25 +14,28 @@
         html, body { margin: 0; padding: 0; width: 100%; height: 100%; overflow: hidden; position: fixed; }
         body { font-family: 'Inter', -apple-system, sans-serif; background-color: var(--color-bg); color: var(--color-text-light); display: flex; flex-direction: column; }
         
-        /* --- KORRIGIERTES ÖPNV-DESIGN --- */
-        #transit-widget {
-            padding: 12px 16px; 
-            background-color: #1f2937; 
-            flex-shrink: 0;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.3); 
+        /* --- NEU: Container für das Wetter-Widget --- */
+        #weather-widget-container {
+            flex-shrink: 0; /* Verhindert, dass der Container schrumpft */
+            background-color: #1f2937; /* Passt sich dem Design an */
             border-bottom: 1px solid #374151;
-            max-height: 175px; /* HÖHE DER SEKTION UM CA. 30% REDUZIERT (250px * 0.7) */
-            overflow-y: auto; 
-            -webkit-overflow-scrolling: touch;
         }
+        #weather-widget-container iframe {
+            display: block; /* Entfernt kleine Abstände unter dem iframe */
+        }
+        
+        .transit-widget {
+            padding: 12px 16px; background-color: #1f2937; flex-shrink: 0;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.3); border-bottom: 1px solid #374151;
+            max-height: 175px;
+            overflow-y: auto; -webkit-overflow-scrolling: touch;
+        }
+        .transit-widget h3 { margin: 0 0 10px 0; font-size: 14px; font-weight: 700; color: #d1d5db; }
         .departure-row {
-            display: flex; align-items: center; gap: 10px; 
-            font-size: 14px; padding: 6px 0;
+            display: flex; align-items: center; gap: 10px; font-size: 14px; padding: 6px 0;
             border-bottom: 1px solid #374151;
         }
         .departure-row:last-child { border-bottom: none; }
-        
-        /* INHALT WIEDER AUF URSPRÜNGLICHE GRÖSSE GESETZT */
         .line-symbol {
             font-weight: 900; font-size: 16px; min-width: 24px; height: 24px;
             border-radius: 50%; background-color: #4b5563;
@@ -47,15 +50,13 @@
         .meta-info { display: flex; align-items: center; gap: 10px; margin-left: auto; padding-left: 10px; }
         .meta-info .time-info { white-space: nowrap; font-weight: 700; font-size: 15px; }
         .meta-info .station { font-size: 14px; font-weight: 900; }
-        
         .station-nk { color: #81a1c1; } .station-sa { color: #a3be8c; }
         .time-soon { color: var(--time-soon); } .time-medium { color: var(--time-medium); } .time-far { color: var(--time-far); }
         .rel-time { font-size: 13px; font-weight: 400; }
         
-        /* Kalender-Layout (unverändert) */
         #calendar-dashboard {
-            padding: 16px 0px; display: grid; grid-template-columns: 1fr; 
-            gap: 1px; flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
+            padding: 16px 12px; display: grid; grid-template-columns: 1fr; 
+            gap: 12px; flex-grow: 1; overflow-y: auto; -webkit-overflow-scrolling: touch;
         }
         .event-card, .empty-day-card { border-radius: 40px; padding: 12px 20px; }
         .event-card { display: flex; align-items: center; justify-content: space-between; color: var(--color-text-dark); box-shadow: 0 4px 15px rgba(0,0,0,0.2); }
@@ -71,39 +72,39 @@
     </style>
 </head>
 <body>
-    <div id="transit-widget"></div>
+
+    <div id="weather-widget-container">
+        <iframe style="width: 100%; border: none; height: 215px; background-color: transparent;" src="https://www.wetter.de/widget/3tage/u33d99zk/false/"></iframe>
+    </div>
+
+    <div id="transit-widget-neukoelln" class="transit-widget">
+        <h3>S+U Neukölln</h3>
+        <div id="departures-neukoelln" class="departures-list"><p>Lade Abfahrten...</p></div>
+    </div>
+    
+    <div id="transit-widget-sonnenallee" class="transit-widget">
+        <h3>S Sonnenallee</h3>
+        <div id="departures-sonnenallee" class="departures-list"><p>Lade Abfahrten...</p></div>
+    </div>
+
     <div id="calendar-dashboard"><h2>Lade Kalenderdaten...</h2></div>
 
     <script>
         const CLOUDFLARE_WORKER_URL = 'https://mkscal.ikeakatalog.workers.dev/';
         const calendarDashboard = document.getElementById('calendar-dashboard');
-        const transitWidget = document.getElementById('transit-widget');
         const colorMap = { 'M&M': '#f4da63', 'Maria': '#d3d3d3', 'MK Solo': '#6dada9', 'Bodo Banali': '#6dada9', 'default': '#e5e7eb' };
 
-        function getTransitSymbol(product) {
-            switch(product) {
-                case 'suburban': return 'S';
-                case 'subway': return 'U';
-                case 'bus': return 'B';
-                default: return '';
-            }
-        }
-        
-        function getTimeClass(minutes) {
-            if (minutes < 5) return 'time-soon';
-            if (minutes <= 10) return 'time-medium';
-            return 'time-far';
-        }
-
-        async function fetchTransitData() {
+        async function fetchTransitData(stationId, listElementId) {
+            const listElement = document.getElementById(listElementId);
             try {
-                const response = await fetch(CLOUDFLARE_WORKER_URL + 'transit');
+                const response = await fetch(`${CLOUDFLARE_WORKER_URL}transit?id=${stationId}`);
                 if (!response.ok) throw new Error('Netzwerkfehler');
                 const departures = await response.json();
                 
-                transitWidget.innerHTML = '';
+                listElement.innerHTML = '';
                 if (!departures || departures.length === 0) {
-                    transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Keine Abfahrten gefunden.</p>'; return;
+                    listElement.innerHTML = '<p style="color: #9ca3af; font-size: 14px;">Keine Daten verfügbar.</p>';
+                    return;
                 }
                 departures.slice(0, 30).forEach(dep => {
                     const depElement = document.createElement('div');
@@ -131,11 +132,11 @@
                             <div class="time-info">${timeInfo}</div>
                         </div>
                     `;
-                    transitWidget.appendChild(depElement);
+                    listElement.appendChild(depElement);
                 });
 
             } catch (error) {
-                transitWidget.innerHTML = '<p style="text-align: center; color: #9ca3af;">Fehler beim Laden der Abfahrten.</p>';
+                listElement.innerHTML = '<p>Fehler beim Laden.</p>';
             }
         }
 
@@ -219,10 +220,25 @@
             return luminance > 0.6 ? '#1f2937' : '#f9fafb';
         }
 
+        function getTransitSymbol(product) {
+            switch(product) {
+                case 'suburban': return 'S';
+                case 'subway': return 'U';
+                case 'bus': return 'B';
+                default: return '';
+            }
+        }
+
+        function getTimeClass(minutes) {
+            if (minutes < 5) return 'time-soon';
+            if (minutes <= 10) return 'time-medium';
+            return 'time-far';
+        }
+
         fetchAndDisplayEvents();
-        fetchTransitData();
+        fetchTransitData('900078201', 'departures-neukoelln');
+        fetchTransitData('900077106', 'departures-sonnenallee');
+
         setInterval(fetchAndDisplayEvents, 60000);
-        setInterval(fetchTransitData, 30000);
-    </script>
-</body>
-</html>
+        setInterval(() => {
+            fetchTransitData('900078201', 'departures-neukoelln');
